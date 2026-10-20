@@ -10,11 +10,54 @@ import java.util.Optional;
 
 public class FacturaDAO {
 
+    // Mapeo entre enums Java (español) y BD (inglés)
+    private static String metodoPagoToDb(Factura.MetodoPago metodo) {
+        return switch (metodo) {
+            case EFECTIVO -> "CASH";
+            case TARJETA_CREDITO -> "CREDIT_CARD";
+            case TARJETA_DEBITO -> "DEBIT_CARD";
+            case TRANSFERENCIA -> "TRANSFER";
+            case QR -> "QR";
+            case MIXTO -> "MIXED";
+        };
+    }
+
+    private static Factura.MetodoPago metodoPagoFromDb(String dbValue) {
+        return switch (dbValue) {
+            case "CASH" -> Factura.MetodoPago.EFECTIVO;
+            case "CREDIT_CARD" -> Factura.MetodoPago.TARJETA_CREDITO;
+            case "DEBIT_CARD" -> Factura.MetodoPago.TARJETA_DEBITO;
+            case "TRANSFER" -> Factura.MetodoPago.TRANSFERENCIA;
+            case "QR" -> Factura.MetodoPago.QR;
+            case "MIXED" -> Factura.MetodoPago.MIXTO;
+            default -> Factura.MetodoPago.EFECTIVO;
+        };
+    }
+
+    private static String estadoPagoToDb(Factura.EstadoPago estado) {
+        return switch (estado) {
+            case PENDIENTE -> "PENDING";
+            case PAGADO -> "PAID";
+            case ANULADO -> "VOIDED";
+            case PARCIAL -> "PARTIAL";
+        };
+    }
+
+    private static Factura.EstadoPago estadoPagoFromDb(String dbValue) {
+        return switch (dbValue) {
+            case "PENDING" -> Factura.EstadoPago.PENDIENTE;
+            case "PAID" -> Factura.EstadoPago.PAGADO;
+            case "VOIDED" -> Factura.EstadoPago.ANULADO;
+            case "PARTIAL" -> Factura.EstadoPago.PARCIAL;
+            default -> Factura.EstadoPago.PENDIENTE;
+        };
+    }
+
     public Optional<Factura> buscarPorId(int idFactura) {
         String sql = """
             SELECT f.*, o.id_table, t.number AS table_number, c.name AS customer_name
             FROM invoice f
-            JOIN `order` o ON f.id_order = o.id_order
+            JOIN `order_restaurant` o ON f.id_order = o.id_order
             LEFT JOIN table_restaurant t ON o.id_table = t.id_table
             LEFT JOIN customer c ON o.id_customer = c.id_customer
             WHERE f.id_invoice = ?
@@ -38,7 +81,7 @@ public class FacturaDAO {
         String sql = """
             SELECT f.*, o.id_table, t.number AS table_number, c.name AS customer_name
             FROM invoice f
-            JOIN `order` o ON f.id_order = o.id_order
+            JOIN `order_restaurant` o ON f.id_order = o.id_order
             LEFT JOIN table_restaurant t ON o.id_table = t.id_table
             LEFT JOIN customer c ON o.id_customer = c.id_customer
             WHERE f.id_order = ?
@@ -62,7 +105,7 @@ public class FacturaDAO {
         String sql = """
             SELECT f.*, o.id_table, t.number AS table_number, c.name AS customer_name
             FROM invoice f
-            JOIN `order` o ON f.id_order = o.id_order
+            JOIN `order_restaurant` o ON f.id_order = o.id_order
             LEFT JOIN table_restaurant t ON o.id_table = t.id_table
             LEFT JOIN customer c ON o.id_customer = c.id_customer
             WHERE f.invoice_number = ?
@@ -87,7 +130,7 @@ public class FacturaDAO {
         String sql = """
             SELECT f.*, o.id_table, t.number AS table_number, c.name AS customer_name
             FROM invoice f
-            JOIN `order` o ON f.id_order = o.id_order
+            JOIN `order_restaurant` o ON f.id_order = o.id_order
             LEFT JOIN table_restaurant t ON o.id_table = t.id_table
             LEFT JOIN customer c ON o.id_customer = c.id_customer
             WHERE f.payment_status = ?
@@ -96,7 +139,7 @@ public class FacturaDAO {
         try (Connection conn = ConexionDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, estado.name());
+            stmt.setString(1, estadoPagoToDb(estado));
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
@@ -123,7 +166,7 @@ public class FacturaDAO {
                 Timestamp fecha = rs.getTimestamp("issue_date");
                 if (fecha != null) factura.setFechaEmision(fecha.toLocalDateTime());
                 factura.setTotal(rs.getDouble("total"));
-                factura.setEstadoPago(Factura.EstadoPago.valueOf(rs.getString("payment_status")));
+                factura.setEstadoPago(estadoPagoFromDb(rs.getString("payment_status")));
                 factura.setNumeroMesa(rs.getString("table_number"));
                 factura.setNombreCliente(rs.getString("customer"));
                 facturas.add(factura);
@@ -135,7 +178,7 @@ public class FacturaDAO {
     }
 
     public List<Factura> listarVentasDiarias(LocalDateTime fecha) {
-        // Uses the view v_daily_sales
+        // Uses the view v_daily_sales - returns aggregated daily sales
         List<Factura> facturas = new ArrayList<>();
         String sql = "SELECT * FROM v_daily_sales WHERE date = ?";
         try (Connection conn = ConexionDB.getConnection();
@@ -145,8 +188,12 @@ public class FacturaDAO {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                // This returns aggregated data, not individual invoices
-                // Use for reports only
+                // Create a summary factura for reporting
+                Factura f = new Factura();
+                f.setFechaEmision(fecha);
+                f.setTotal(rs.getDouble("total_sales"));
+                f.setObservaciones("Daily sales: " + rs.getInt("total_invoices") + " invoices");
+                facturas.add(f);
             }
         } catch (SQLException e) {
             System.err.println("Error listando ventas diarias: " + e.getMessage());
@@ -161,7 +208,7 @@ public class FacturaDAO {
              CallableStatement stmt = conn.prepareCall(sql)) {
 
             stmt.setInt(1, idPedido);
-            stmt.setString(2, metodoPago.name());
+            stmt.setString(2, metodoPagoToDb(metodoPago));
             stmt.setString(3, numeroFactura);
 
             boolean hasResults = stmt.execute();
@@ -189,7 +236,7 @@ public class FacturaDAO {
 
             stmt.setInt(1, idFactura);
             stmt.setDouble(2, monto);
-            stmt.setString(3, metodoPago.name());
+            stmt.setString(3, metodoPagoToDb(metodoPago));
             stmt.setString(4, referencia);
 
             stmt.execute();
@@ -231,8 +278,8 @@ public class FacturaDAO {
         factura.setSubtotal(rs.getDouble("subtotal"));
         factura.setImpuestos(rs.getDouble("taxes"));
         factura.setTotal(rs.getDouble("total"));
-        factura.setMetodoPago(Factura.MetodoPago.valueOf(rs.getString("payment_method")));
-        factura.setEstadoPago(Factura.EstadoPago.valueOf(rs.getString("payment_status")));
+        factura.setMetodoPago(metodoPagoFromDb(rs.getString("payment_method")));
+        factura.setEstadoPago(estadoPagoFromDb(rs.getString("payment_status")));
         factura.setNumeroFactura(rs.getString("invoice_number"));
         factura.setObservaciones(rs.getString("notes"));
         factura.setNumeroMesa(rs.getString("table_number"));

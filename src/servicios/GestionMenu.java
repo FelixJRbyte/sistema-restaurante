@@ -43,6 +43,11 @@ public class GestionMenu {
         return platoDAO.cambiarDisponibilidad(idPlato, disponible);
     }
 
+    public boolean eliminarPlato(int idPlato) {
+        // Soft delete: mark as unavailable
+        return platoDAO.cambiarDisponibilidad(idPlato, false);
+    }
+
     // Categoria operations
     public List<CategoriaPlato> listarCategorias() {
         return categoriaDAO.listarTodas();

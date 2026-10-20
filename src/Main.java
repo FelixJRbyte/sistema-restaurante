@@ -9,6 +9,7 @@ import modelo.Mesa;
 import modelo.Pedido;
 import modelo.Plato;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
@@ -64,6 +65,7 @@ public class Main {
             System.out.println("3. Listar mesas ocupadas");
             System.out.println("4. Registrar nueva mesa");
             System.out.println("5. Cambiar estado de mesa");
+            System.out.println("6. Eliminar mesa");
             System.out.println("0. Volver");
 
             System.out.print("Opción: ");
@@ -75,6 +77,7 @@ public class Main {
                 case 3 -> listarMesasOcupadas();
                 case 4 -> registrarMesa();
                 case 5 -> cambiarEstadoMesa();
+                case 6 -> eliminarMesa();
                 case 0 -> System.out.println("Volviendo al menú principal...");
                 default -> System.out.println("Opción inválida.");
             }
@@ -157,6 +160,31 @@ public class Main {
         }
     }
 
+    private static void eliminarMesa() {
+        System.out.print("ID de mesa a eliminar: ");
+        int idMesa = leerEntero();
+        
+        Optional<Mesa> mesaOpt = gestionMesas.buscarMesaPorId(idMesa);
+        if (mesaOpt.isEmpty()) {
+            System.out.println("Mesa no encontrada.");
+            return;
+        }
+        
+        Mesa mesa = mesaOpt.get();
+        System.out.printf("Eliminar mesa #%d (capacidad %d)? (s/n): ", mesa.getNumero(), mesa.getCapacidad());
+        String confirm = teclado.next().toLowerCase();
+        
+        if ("s".equals(confirm)) {
+            if (gestionMesas.eliminarMesa(idMesa)) {
+                System.out.println("Mesa eliminada (marcada como mantenimiento).");
+            } else {
+                System.out.println("Error al eliminar mesa (¿tiene pedidos activos?).");
+            }
+        } else {
+            System.out.println("Operación cancelada.");
+        }
+    }
+
     private static void menuGestionMenu() {
         int opcion;
         do {
@@ -165,7 +193,9 @@ public class Main {
             System.out.println("2. Listar platos por categoría");
             System.out.println("3. Listar categorías");
             System.out.println("4. Registrar nuevo plato");
-            System.out.println("5. Cambiar disponibilidad de plato");
+            System.out.println("5. Actualizar plato");
+            System.out.println("6. Cambiar disponibilidad de plato");
+            System.out.println("7. Eliminar plato");
             System.out.println("0. Volver");
 
             System.out.print("Opción: ");
@@ -176,7 +206,9 @@ public class Main {
                 case 2 -> listarPlatosPorCategoria();
                 case 3 -> listarCategorias();
                 case 4 -> registrarPlato();
-                case 5 -> cambiarDisponibilidadPlato();
+                case 5 -> actualizarPlato();
+                case 6 -> cambiarDisponibilidadPlato();
+                case 7 -> eliminarPlato();
                 case 0 -> System.out.println("Volviendo al menú principal...");
                 default -> System.out.println("Opción inválida.");
             }
@@ -253,6 +285,71 @@ public class Main {
             System.out.println("Disponibilidad actualizada.");
         } else {
             System.out.println("Error al actualizar disponibilidad.");
+        }
+    }
+
+    private static void actualizarPlato() {
+        System.out.print("ID del plato a actualizar: ");
+        int idPlato = leerEntero();
+        
+        Optional<Plato> platoOpt = gestionMenu.buscarPlatoPorId(idPlato);
+        if (platoOpt.isEmpty()) {
+            System.out.println("Plato no encontrado.");
+            return;
+        }
+        
+        Plato p = platoOpt.get();
+        System.out.print("Nuevo nombre (" + p.getNombre() + "): ");
+        teclado.nextLine();
+        String nombre = teclado.nextLine();
+        if (!nombre.isEmpty()) p.setNombre(nombre);
+        
+        System.out.print("Nueva descripción (" + p.getDescripcion() + "): ");
+        String desc = teclado.nextLine();
+        if (!desc.isEmpty()) p.setDescripcion(desc);
+        
+        System.out.print("Nuevo precio (" + p.getPrecio() + "): ");
+        String precioStr = teclado.nextLine();
+        if (!precioStr.isEmpty()) p.setPrecio(Double.parseDouble(precioStr));
+        
+        System.out.print("Nuevo tiempo preparación (" + p.getTiempoPreparacion() + "): ");
+        String tiempoStr = teclado.nextLine();
+        if (!tiempoStr.isEmpty()) p.setTiempoPreparacion(Integer.parseInt(tiempoStr));
+        
+        listarCategorias();
+        System.out.print("Nueva categoría (" + p.getIdCategoria() + "): ");
+        String catStr = teclado.nextLine();
+        if (!catStr.isEmpty()) p.setIdCategoria(Integer.parseInt(catStr));
+        
+        if (gestionMenu.actualizarPlato(p)) {
+            System.out.println("Plato actualizado.");
+        } else {
+            System.out.println("Error al actualizar plato.");
+        }
+    }
+
+    private static void eliminarPlato() {
+        System.out.print("ID del plato a eliminar: ");
+        int idPlato = leerEntero();
+        
+        Optional<Plato> platoOpt = gestionMenu.buscarPlatoPorId(idPlato);
+        if (platoOpt.isEmpty()) {
+            System.out.println("Plato no encontrado.");
+            return;
+        }
+        
+        Plato p = platoOpt.get();
+        System.out.printf("Eliminar plato '%s'? (s/n): ", p.getNombre());
+        String confirm = teclado.next().toLowerCase();
+        
+        if ("s".equals(confirm)) {
+            if (gestionMenu.eliminarPlato(idPlato)) {
+                System.out.println("Plato eliminado (marcado como no disponible).");
+            } else {
+                System.out.println("Error al eliminar plato (¿tiene pedidos asociados?).");
+            }
+        } else {
+            System.out.println("Operación cancelada.");
         }
     }
 
@@ -557,6 +654,7 @@ public class Main {
             System.out.println("2. Buscar cliente por email");
             System.out.println("3. Registrar nuevo cliente");
             System.out.println("4. Actualizar cliente");
+            System.out.println("5. Eliminar cliente");
             System.out.println("0. Volver");
 
             System.out.print("Opción: ");
@@ -567,6 +665,7 @@ public class Main {
                 case 2 -> buscarClientePorEmail();
                 case 3 -> registrarCliente();
                 case 4 -> actualizarCliente();
+                case 5 -> eliminarCliente();
                 case 0 -> System.out.println("Volviendo al menú principal...");
                 default -> System.out.println("Opción inválida.");
             }
@@ -652,9 +751,34 @@ public class Main {
         }
     }
 
+    private static void eliminarCliente() {
+        System.out.print("ID del cliente a eliminar: ");
+        int id = leerEntero();
+        
+        Optional<Cliente> clienteOpt = gestionClientes.buscarClientePorId(id);
+        if (clienteOpt.isEmpty()) {
+            System.out.println("Cliente no encontrado.");
+            return;
+        }
+        
+        Cliente c = clienteOpt.get();
+        System.out.printf("Eliminar cliente '%s'? (s/n): ", c.getNombre());
+        String confirm = teclado.next().toLowerCase();
+        
+        if ("s".equals(confirm)) {
+            if (gestionClientes.eliminarCliente(id)) {
+                System.out.println("Cliente eliminado (desactivado).");
+            } else {
+                System.out.println("Error al eliminar cliente.");
+            }
+        } else {
+            System.out.println("Operación cancelada.");
+        }
+    }
+
     private static void menuConsultas() {
         System.out.println("\n--- CONSULTAS Y REPORTES ---");
-        System.out.println("1. Ventas del día (requiere BD con datos)");
+        System.out.println("1. Ventas del día");
         System.out.println("2. Pedidos por cliente");
         System.out.println("3. Historial de facturas");
         System.out.println("0. Volver");
@@ -662,6 +786,21 @@ public class Main {
         int op = leerEntero();
 
         switch (op) {
+            case 1 -> {
+                System.out.print("Fecha (YYYY-MM-DD) [hoy]: ");
+                teclado.nextLine();
+                String fechaStr = teclado.nextLine().trim();
+                LocalDateTime fecha = fechaStr.isEmpty() ? LocalDateTime.now() : LocalDateTime.parse(fechaStr + "T00:00:00");
+                List<Factura> ventas = gestionFacturas.listarVentasDiarias(fecha);
+                if (ventas.isEmpty()) {
+                    System.out.println("No hay ventas para esa fecha.");
+                } else {
+                    for (Factura v : ventas) {
+                        System.out.printf("Fecha: %s | Total: $%.2f | %s%n", 
+                            v.getFechaEmision().toLocalDate(), v.getTotal(), v.getObservaciones());
+                    }
+                }
+            }
             case 2 -> {
                 System.out.print("ID de cliente: ");
                 int idC = leerEntero();

@@ -49,6 +49,11 @@ public class GestionMesas {
         return mesaDAO.cambiarEstadoConValidacion(idMesa, "FREE");
     }
 
+    public boolean eliminarMesa(int idMesa) {
+        // Soft delete: change status to MAINTENANCE
+        return mesaDAO.cambiarEstadoConValidacion(idMesa, "MAINTENANCE");
+    }
+
     public void cerrarConexion() {
         ConexionDB.closeConnection();
     }

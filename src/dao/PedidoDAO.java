@@ -13,10 +13,34 @@ public class PedidoDAO {
 
     private final DetallePedidoDAO detalleDAO = new DetallePedidoDAO();
 
+    // Mapeo entre enums Java (español) y BD (inglés)
+    private static String estadoToDb(Pedido.Estado estado) {
+        return switch (estado) {
+            case PENDIENTE -> "PENDING";
+            case EN_PREPARACION -> "IN_PREPARATION";
+            case LISTO -> "READY";
+            case ENTREGADO -> "DELIVERED";
+            case CANCELADO -> "CANCELLED";
+            case FACTURADO -> "INVOICED";
+        };
+    }
+
+    private static Pedido.Estado estadoFromDb(String dbValue) {
+        return switch (dbValue) {
+            case "PENDING" -> Pedido.Estado.PENDIENTE;
+            case "IN_PREPARATION" -> Pedido.Estado.EN_PREPARACION;
+            case "READY" -> Pedido.Estado.LISTO;
+            case "DELIVERED" -> Pedido.Estado.ENTREGADO;
+            case "CANCELLED" -> Pedido.Estado.CANCELADO;
+            case "INVOICED" -> Pedido.Estado.FACTURADO;
+            default -> Pedido.Estado.PENDIENTE;
+        };
+    }
+
     public Optional<Pedido> buscarPorId(int idPedido) {
         String sql = """
             SELECT p.*, t.number AS table_number, c.name AS customer_name
-            FROM `order` p
+            FROM `order_restaurant` p
             LEFT JOIN table_restaurant t ON p.id_table = t.id_table
             LEFT JOIN customer c ON p.id_customer = c.id_customer
             WHERE p.id_order = ?
@@ -42,7 +66,7 @@ public class PedidoDAO {
         List<Pedido> pedidos = new ArrayList<>();
         String sql = """
             SELECT p.*, t.number AS table_number, c.name AS customer_name
-            FROM `order` p
+            FROM `order_restaurant` p
             LEFT JOIN table_restaurant t ON p.id_table = t.id_table
             LEFT JOIN customer c ON p.id_customer = c.id_customer
             WHERE p.id_table = ?
@@ -69,7 +93,7 @@ public class PedidoDAO {
         List<Pedido> pedidos = new ArrayList<>();
         String sql = """
             SELECT p.*, t.number AS table_number, c.name AS customer_name
-            FROM `order` p
+            FROM `order_restaurant` p
             LEFT JOIN table_restaurant t ON p.id_table = t.id_table
             LEFT JOIN customer c ON p.id_customer = c.id_customer
             WHERE p.id_customer = ?
@@ -96,7 +120,7 @@ public class PedidoDAO {
         List<Pedido> pedidos = new ArrayList<>();
         String sql = """
             SELECT p.*, t.number AS table_number, c.name AS customer_name
-            FROM `order` p
+            FROM `order_restaurant` p
             LEFT JOIN table_restaurant t ON p.id_table = t.id_table
             LEFT JOIN customer c ON p.id_customer = c.id_customer
             WHERE p.status = ?
@@ -105,7 +129,7 @@ public class PedidoDAO {
         try (Connection conn = ConexionDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, estado.name());
+            stmt.setString(1, estadoToDb(estado));
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
@@ -120,7 +144,7 @@ public class PedidoDAO {
     }
 
     public List<Pedido> listarPedidosCocina() {
-        // Uses the view v_kitchen_orders
+        // Uses the view v_kitchen_orders (already uses correct table name)
         List<Pedido> pedidos = new ArrayList<>();
         String sql = "SELECT * FROM v_kitchen_orders";
         try (Connection conn = ConexionDB.getConnection();
@@ -134,7 +158,7 @@ public class PedidoDAO {
                 pedido.setNumeroMesa(rs.getString("table_number"));
                 Timestamp fecha = rs.getTimestamp("order_datetime");
                 if (fecha != null) pedido.setFechaHora(fecha.toLocalDateTime());
-                pedido.setEstado(Pedido.Estado.valueOf(rs.getString("status")));
+                pedido.setEstado(estadoFromDb(rs.getString("status")));
                 pedido.setObservaciones(rs.getString("notes"));
                 pedido.setDetalles(detalleDAO.buscarPorPedido(pedido.getIdPedido()));
                 pedidos.add(pedido);
@@ -197,11 +221,11 @@ public class PedidoDAO {
     }
 
     public boolean actualizarEstado(int idPedido, Pedido.Estado nuevoEstado) {
-        String sql = "UPDATE `order` SET status = ? WHERE id_order = ?";
+        String sql = "UPDATE `order_restaurant` SET status = ? WHERE id_order = ?";
         try (Connection conn = ConexionDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, nuevoEstado.name());
+            stmt.setString(1, estadoToDb(nuevoEstado));
             stmt.setInt(2, idPedido);
 
             int filas = stmt.executeUpdate();
@@ -232,7 +256,7 @@ public class PedidoDAO {
         if (fecha != null) {
             pedido.setFechaHora(fecha.toLocalDateTime());
         }
-        pedido.setEstado(Pedido.Estado.valueOf(rs.getString("status")));
+        pedido.setEstado(estadoFromDb(rs.getString("status")));
         pedido.setObservaciones(rs.getString("notes"));
         pedido.setTotal(rs.getDouble("total"));
         pedido.setNumeroMesa(rs.getString("table_number"));

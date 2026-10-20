@@ -4,6 +4,7 @@ import dao.ConexionDB;
 import dao.FacturaDAO;
 import modelo.Factura;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,6 +42,10 @@ public class GestionFacturas {
 
     public boolean anularFactura(int idFactura) {
         return facturaDAO.anularFactura(idFactura);
+    }
+
+    public List<Factura> listarVentasDiarias(LocalDateTime fecha) {
+        return facturaDAO.listarVentasDiarias(fecha);
     }
 
     public void cerrarConexion() {

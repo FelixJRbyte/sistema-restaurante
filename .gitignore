@@ -1,0 +1,19 @@
+# Build artifacts
+out/
+target/
+*.class
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Local config
+opencode.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database config (credentials)
+src/main/resources/db.properties
