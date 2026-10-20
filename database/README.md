@@ -1,135 +1,135 @@
-# Entregables Fase 4 - Base de Datos Relacional
+# Phase 4 Deliverables - Relational Database
 
-## Contenido de la Carpeta
+## Folder Contents
 
-| Archivo | Descripción |
-|---------|-------------|
-| `restaurante_db.sql` | **Script SQL completo** (DDL + DML + Triggers + SPs + Vistas + Seed Data) |
-| `ERD.md` | **Diagrama Entidad-Relación** en formato Mermaid + documentación de entidades |
-| `MODELO_LOGICO.md` | **Modelo Lógico Formal** (esquema relacional, dependencias funcionales, diccionario de datos) |
+| File | Description |
+|------|-------------|
+| `restaurante_db.sql` | **Complete SQL script** (DDL + DML + Triggers + SPs + Views + Seed Data) |
+| `ERD.md` | **Entity-Relationship Diagram** in Mermaid format + entity documentation |
+| `MODELO_LOGICO.md` | **Formal Logical Model** (relational schema, functional dependencies, data dictionary) |
 
-## Cómo Ejecutar el Script SQL
+## How to Run the SQL Script
 
-### Opción 1: MySQL/MariaDB (Recomendado)
+### Option 1: MySQL/MariaDB (Recommended)
 
 ```bash
-# Desde terminal
+# From terminal
 mysql -u root -p < database/restaurante_db.sql
 
-# O dentro de MySQL
+# Or inside MySQL
 SOURCE database/restaurante_db.sql;
 ```
 
-### Opción 2: MySQL Workbench / DBeaver / phpMyAdmin
-1. Abrir el archivo `restaurante_db.sql`
-2. Ejecutar completo (Ctrl+Shift+Enter / botón "Execute")
+### Option 2: MySQL Workbench / DBeaver / phpMyAdmin
+1. Open the `restaurante_db.sql` file
+2. Execute completely (Ctrl+Shift+Enter / "Execute" button)
 
-### Opción 3: Línea de comandos Windows (PowerShell)
+### Option 3: Windows Command Line (PowerShell)
 ```powershell
 Get-Content database\restaurante_db.sql | mysql -u root -p
 ```
 
-## Qué Crea el Script
+## What the Script Creates
 
-### Estructura (DDL)
-- ✅ 8 tablas normalizadas en 3FN
+### Structure (DDL)
+- ✅ 8 tables normalized to 3NF
 - ✅ Primary Keys, Foreign Keys, Unique Constraints
-- ✅ Check Constraints (validación de dominio)
-- ✅ ENUMs para estados controlados
-- ✅ Índices optimizados para consultas típicas
-- ✅ 5 Vistas predefinidas para reportes comunes
+- ✅ Check Constraints (domain validation)
+- ✅ ENUMs for controlled states
+- ✅ Optimized indexes for typical queries
+- ✅ 5 predefined views for common reports
 
-### Lógica de Negocio (Triggers + SPs)
-- ✅ 6 Triggers para integridad automática:
-  - Recalculo de totales de pedido
-  - Cambio estado pedido → factura
-  - Actualización estado pago factura
-  - Liberación automática de mesas
-- ✅ 5 Stored Procedures encapsulando operaciones:
-  - `sp_crear_pedido()` - Valida mesa libre
-  - `sp_agregar_plato_pedido()` - Valida estado y disponibilidad
-  - `sp_generar_factura()` - Calcula IVA 19%
-  - `sp_registrar_pago()` - Soporta pagos parciales/mixtos
-  - `sp_cambiar_estado_mesa()` - Valida reglas de negocio
+### Business Logic (Triggers + SPs)
+- ✅ 6 Triggers for automatic integrity:
+  - Order total recalculation
+  - Order status → invoice change
+  - Invoice payment status update
+  - Automatic table release
+- ✅ 5 Stored Procedures encapsulating operations:
+  - `sp_create_order()` - Validates free table
+  - `sp_add_dish_to_order()` - Validates state and availability
+  - `sp_generate_invoice()` - Calculates 19% VAT
+  - `sp_register_payment()` - Supports partial/mixed payments
+  - `sp_change_table_status()` - Validates business rules
 
-### Datos de Prueba (DML)
-- ✅ 6 categorías de menú
-- ✅ 28 platos con precios y tiempos reales
-- ✅ 12 mesas (distintas capacidades/ubicaciones)
-- ✅ 8 clientes
-- ✅ 7 pedidos en estados variados (PENDIENTE, EN_PREPARACION, LISTO, ENTREGADO, FACTURADO, CANCELADO)
-- ✅ 2 facturas (una pagada, una con pago parcial)
-- ✅ 2 pagos registrados
+### Test Data (DML)
+- ✅ 6 menu categories
+- ✅ 28 dishes with real prices and times
+- ✅ 12 tables (different capacities/locations)
+- ✅ 8 customers
+- ✅ 7 orders in various states (PENDING, IN_PREPARATION, READY, DELIVERED, INVOICED, CANCELLED)
+- ✅ 2 invoices (one paid, one with partial payment)
+- ✅ 2 payments registered
 
-## Verificación Rápida
+## Quick Verification
 
-Tras ejecutar, comprobar:
+After execution, verify:
 
 ```sql
--- Tablas creadas
+-- Created tables
 SHOW TABLES;
 
--- Conteo de registros seed
-SELECT 'categoria_plato' t, COUNT(*) c FROM categoria_plato
-UNION ALL SELECT 'plato', COUNT(*) FROM plato
-UNION ALL SELECT 'mesa', COUNT(*) FROM mesa
-UNION ALL SELECT 'cliente', COUNT(*) FROM cliente
-UNION ALL SELECT 'pedido', COUNT(*) FROM pedido
-UNION ALL SELECT 'detalle_pedido', COUNT(*) FROM detalle_pedido
-UNION ALL SELECT 'factura', COUNT(*) FROM factura
-UNION ALL SELECT 'pago_factura', COUNT(*) FROM pago_factura;
+-- Seed record counts
+SELECT 'dish_category' t, COUNT(*) c FROM dish_category
+UNION ALL SELECT 'dish', COUNT(*) FROM dish
+UNION ALL SELECT 'table_restaurant', COUNT(*) FROM table_restaurant
+UNION ALL SELECT 'customer', COUNT(*) FROM customer
+UNION ALL SELECT 'order', COUNT(*) FROM `order`
+UNION ALL SELECT 'order_detail', COUNT(*) FROM order_detail
+UNION ALL SELECT 'invoice', COUNT(*) FROM invoice
+UNION ALL SELECT 'invoice_payment', COUNT(*) FROM invoice_payment;
 
--- Probar vistas
-SELECT * FROM v_menu_activo LIMIT 5;
-SELECT * FROM v_mesas_disponibles;
-SELECT * FROM v_pedidos_cocina;
-SELECT * FROM v_facturas_pendientes;
-SELECT * FROM v_ventas_diarias;
+-- Test views
+SELECT * FROM v_active_menu LIMIT 5;
+SELECT * FROM v_available_tables;
+SELECT * FROM v_kitchen_orders;
+SELECT * FROM v_pending_invoices;
+SELECT * FROM v_daily_sales;
 ```
 
-## Integración con Java (Fase 3)
+## Java Integration (Phase 3)
 
-El modelo está diseñado para mapear directamente a las clases Java del proyecto:
+The model is designed to map directly to the project's Java classes:
 
-| Tabla | Clase Java (src/modelo/) | Estado Actual |
-|-------|-------------------------|---------------|
-| `mesa` | `Mesa.java` | ✅ Completa |
-| `cliente` | `Cliente.java` | ⬜ Vacía - completar |
-| `plato` | `Plato.java` | ⬜ Vacía - completar |
-| `pedido` | `Pedido.java` | ⬜ Vacía - completar |
-| `factura` | `Factura.java` | ⬜ Vacía - completar |
+| Table | Java Class (src/modelo/) | Current Status |
+|-------|-------------------------|----------------|
+| `table_restaurant` | `Mesa.java` | ✅ Complete |
+| `customer` | `Cliente.java` | ⬜ Empty - complete |
+| `dish` | `Plato.java` | ⬜ Empty - complete |
+| `order` | `Pedido.java` | ⬜ Empty - complete |
+| `invoice` | `Factura.java` | ⬜ Empty - complete |
 
-**Siguiente paso**: Implementar las clases modelo vacías usando este esquema como referencia, y crear DAOs/Repositorios que usen los Stored Procedures.
+**Next step**: Implement empty model classes using this schema as reference, and create DAOs/Repositories that use the Stored Procedures.
 
-## Cumplimiento Criterios Fase 4
+## Phase 4 Criteria Compliance
 
-| Criterio | Estado | Evidencia |
-|----------|--------|-----------|
-| Identificar entidades | ✅ | 8 entidades en ERD.md |
-| Definir atributos | ✅ | Diccionario en MODELO_LOGICO.md |
-| Definir PK | ✅ | Todas las tablas tienen PK (AUTO_INCREMENT) |
-| Definir relaciones FK + cardinalidad | ✅ | 7 FKs documentadas en ERD.md |
-| Normalizar hasta 3FN | ✅ | Análisis en MODELO_LOGICO.md |
-| Crear Diagrama ER | ✅ | ERD.md (Mermaid + tabla) |
-| Crear modelo lógico | ✅ | MODELO_LOGICO.md |
-| Crear tablas (DDL) | ✅ | restaurante_db.sql |
-| Definir constraints (NOT NULL, UNIQUE, CHECK, FK) | ✅ | Todas en DDL |
-| Script SQL completo | ✅ | restaurante_db.sql |
-| Datos mock/seed (DML) | ✅ | Sección final del .sql |
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Identify entities | ✅ | 8 entities in ERD.md |
+| Define attributes | ✅ | Dictionary in MODELO_LOGICO.md |
+| Define PK | ✅ | All tables have PK (AUTO_INCREMENT) |
+| Define FK relationships + cardinality | ✅ | 7 FKs documented in ERD.md |
+| Normalize to 3NF | ✅ | Analysis in MODELO_LOGICO.md |
+| Create ER Diagram | ✅ | ERD.md (Mermaid + table) |
+| Create logical model | ✅ | MODELO_LOGICO.md |
+| Create tables (DDL) | ✅ | restaurante_db.sql |
+| Define constraints (NOT NULL, UNIQUE, CHECK, FK) | ✅ | All in DDL |
+| Complete SQL script | ✅ | restaurante_db.sql |
+| Mock/seed data (DML) | ✅ | Final section of .sql |
 
-## Notas Técnicas
+## Technical Notes
 
-- **Motor**: InnoDB (transacciones, FKs)
-- **Charset**: utf8mb4 (soporte emojis, caracteres latinos completos)
-- **Collation**: utf8mb4_unicode_ci (ordenación correcta español)
-- **IVA**: 19% hardcodeado en SP `sp_generar_factura` (configurable si se requiere)
-- **Pagos mixtos**: Soportados vía tabla `PAGO_FACTURA` y metodo_pago='MIXTO' en factura
-- **Soft delete**: Campo `activo` en CLIENTE; mesas usan estado `MANTENIMIENTO`
+- **Engine**: InnoDB (transactions, FKs)
+- **Charset**: utf8mb4 (emoji support, full Latin characters)
+- **Collation**: utf8mb4_unicode_ci (correct Spanish sorting)
+- **VAT**: 19% hardcoded in SP `sp_generate_invoice` (configurable if needed)
+- **Mixed payments**: Supported via `INVOICE_PAYMENT` table and payment_method='MIXED' in invoice
+- **Soft delete**: `active` field in CUSTOMER; tables use `MAINTENANCE` status
 
-## Contacto / Equipo
+## Contact / Team
 
-- **Grupo**: 04
-- **Ficha**: 3239188
-- **Programa**: ADSO - SENA
-- **Integrantes**: Félix Antonio Murcia Cedeño, Sergio Andrés García Salazar, Diego Andrés Ávila Herrera
-- **Repositorio**: https://github.com/FelixJRbyte/sistema-restaurante
+- **Group**: 04
+- **Cohort**: 3239188
+- **Program**: ADSO - SENA
+- **Members**: Félix Antonio Murcia Cedeño, Sergio Andrés García Salazar, Diego Andrés Ávila Herrera
+- **Repository**: https://github.com/FelixJRbyte/sistema-restaurante

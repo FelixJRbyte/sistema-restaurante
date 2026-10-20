@@ -1,266 +1,266 @@
-# Modelo Entidad-Relación - Sistema de Restaurante
+# Entity-Relationship Model - Restaurant Management System
 
-## Diagrama ER (Mermaid)
+## ER Diagram (Mermaid)
 
 ```mermaid
 erDiagram
-    CLIENTE ||--o{ PEDIDO : realiza
-    MESA ||--o{ PEDIDO : "tiene"
-    PEDIDO ||--o{ DETALLE_PEDIDO : contiene
-    PLATO ||--o{ DETALLE_PEDIDO : "se incluye en"
-    CATEGORIA_PLATO ||--o{ PLATO : clasifica
-    PEDIDO ||--|| FACTURA : genera
-    FACTURA ||--o{ PAGO_FACTURA : "tiene pagos"
+    CUSTOMER ||--o{ ORDER : places
+    TABLE_RESTAURANT ||--o{ ORDER : "has"
+    ORDER ||--o{ ORDER_DETAIL : contains
+    DISH ||--o{ ORDER_DETAIL : "included in"
+    DISH_CATEGORY ||--o{ DISH : classifies
+    ORDER ||--|| INVOICE : generates
+    INVOICE ||--o{ INVOICE_PAYMENT : "has payments"
 
-    CLIENTE {
-        INT id_cliente PK
-        VARCHAR nombre
-        VARCHAR telefono
+    CUSTOMER {
+        INT id_customer PK
+        VARCHAR name
+        VARCHAR phone
         VARCHAR email UK
-        VARCHAR direccion
-        TIMESTAMP fecha_registro
-        BOOLEAN activo
+        VARCHAR address
+        TIMESTAMP registration_date
+        BOOLEAN active
     }
 
-    MESA {
-        INT id_mesa PK
-        INT numero UK
-        INT capacidad
-        ENUM estado
-        VARCHAR ubicacion
+    TABLE_RESTAURANT {
+        INT id_table PK
+        INT number UK
+        INT capacity
+        ENUM status
+        VARCHAR location
     }
 
-    CATEGORIA_PLATO {
-        INT id_categoria PK
-        VARCHAR nombre UK
-        VARCHAR descripcion
-        INT orden
+    DISH_CATEGORY {
+        INT id_category PK
+        VARCHAR name UK
+        VARCHAR description
+        INT display_order
     }
 
-    PLATO {
-        INT id_plato PK
-        INT id_categoria FK
-        VARCHAR nombre
-        VARCHAR descripcion
-        DECIMAL precio
-        BOOLEAN disponible
-        INT tiempo_preparacion
+    DISH {
+        INT id_dish PK
+        INT id_category FK
+        VARCHAR name
+        VARCHAR description
+        DECIMAL price
+        BOOLEAN available
+        INT prep_time_minutes
     }
 
-    PEDIDO {
-        INT id_pedido PK
-        INT id_mesa FK
-        INT id_cliente FK
-        TIMESTAMP fecha_hora
-        ENUM estado
-        VARCHAR observaciones
+    ORDER {
+        INT id_order PK
+        INT id_table FK
+        INT id_customer FK
+        TIMESTAMP order_datetime
+        ENUM status
+        VARCHAR notes
         DECIMAL total
     }
 
-    DETALLE_PEDIDO {
-        INT id_detalle PK
-        INT id_pedido FK
-        INT id_plato FK
-        INT cantidad
-        DECIMAL precio_unitario
+    ORDER_DETAIL {
+        INT id_detail PK
+        INT id_order FK
+        INT id_dish FK
+        INT quantity
+        DECIMAL unit_price
         DECIMAL subtotal "GENERATED"
-        VARCHAR observaciones
+        VARCHAR notes
     }
 
-    FACTURA {
-        INT id_factura PK
-        INT id_pedido FK UK
-        TIMESTAMP fecha_emision
+    INVOICE {
+        INT id_invoice PK
+        INT id_order FK UK
+        TIMESTAMP issue_date
         DECIMAL subtotal
-        DECIMAL impuestos
+        DECIMAL taxes
         DECIMAL total
-        ENUM metodo_pago
-        ENUM estado_pago
-        VARCHAR numero_factura UK
-        VARCHAR observaciones
+        ENUM payment_method
+        ENUM payment_status
+        VARCHAR invoice_number UK
+        VARCHAR notes
     }
 
-    PAGO_FACTURA {
-        INT id_pago PK
-        INT id_factura FK
-        TIMESTAMP fecha_pago
-        DECIMAL monto
-        ENUM metodo_pago
-        VARCHAR referencia
+    INVOICE_PAYMENT {
+        INT id_payment PK
+        INT id_invoice FK
+        TIMESTAMP payment_date
+        DECIMAL amount
+        ENUM payment_method
+        VARCHAR reference
     }
 ```
 
-## Entidades y Atributos
+## Entities and Attributes
 
-### 1. CLIENTE
-| Atributo | Tipo | Restricciones | Descripción |
-|----------|------|---------------|-------------|
-| id_cliente | INT | PK, AI | Identificador único |
-| nombre | VARCHAR(100) | NOT NULL | Nombre completo |
-| telefono | VARCHAR(20) | CHECK (formato) | Teléfono de contacto |
-| email | VARCHAR(100) | UNIQUE | Email único |
-| direccion | VARCHAR(200) | | Dirección |
-| fecha_registro | TIMESTAMP | DEFAULT NOW() | Fecha de registro |
-| activo | BOOLEAN | DEFAULT TRUE | Estado del cliente |
+### 1. CUSTOMER
+| Attribute | Type | Constraints | Description |
+|-----------|------|-------------|-------------|
+| id_customer | INT | PK, AI | Unique identifier |
+| name | VARCHAR(100) | NOT NULL | Full name |
+| phone | VARCHAR(20) | CHECK (format) | Contact phone |
+| email | VARCHAR(100) | UNIQUE | Unique email |
+| address | VARCHAR(200) | | Address |
+| registration_date | TIMESTAMP | DEFAULT NOW() | Registration date |
+| active | BOOLEAN | DEFAULT TRUE | Customer status |
 
-### 2. MESA
-| Atributo | Tipo | Restricciones | Descripción |
-|----------|------|---------------|-------------|
-| id_mesa | INT | PK, AI | Identificador único |
-| numero | INT | NOT NULL, UNIQUE, >0 | Número de mesa visible |
-| capacidad | INT | NOT NULL, >0, ≤20 | Comensales máximos |
-| estado | ENUM | NOT NULL, DEFAULT 'LIBRE' | LIBRE, OCUPADA, RESERVADA, MANTENIMIENTO |
-| ubicacion | VARCHAR(50) | | Zona del restaurante |
+### 2. TABLE_RESTAURANT
+| Attribute | Type | Constraints | Description |
+|-----------|------|-------------|-------------|
+| id_table | INT | PK, AI | Unique identifier |
+| number | INT | NOT NULL, UNIQUE, >0 | Visible table number |
+| capacity | INT | NOT NULL, >0, ≤20 | Maximum diners |
+| status | ENUM | NOT NULL, DEFAULT 'FREE' | FREE, OCCUPIED, RESERVED, MAINTENANCE |
+| location | VARCHAR(50) | | Restaurant zone |
 
-### 3. CATEGORIA_PLATO
-| Atributo | Tipo | Restricciones | Descripción |
-|----------|------|---------------|-------------|
-| id_categoria | INT | PK, AI | Identificador único |
-| nombre | VARCHAR(50) | NOT NULL, UNIQUE | Nombre de categoría |
-| descripcion | VARCHAR(200) | | Descripción |
-| orden | INT | DEFAULT 0 | Orden en menú |
+### 3. DISH_CATEGORY
+| Attribute | Type | Constraints | Description |
+|-----------|------|-------------|-------------|
+| id_category | INT | PK, AI | Unique identifier |
+| name | VARCHAR(50) | NOT NULL, UNIQUE | Category name |
+| description | VARCHAR(200) | | Description |
+| display_order | INT | DEFAULT 0 | Menu display order |
 
-### 4. PLATO
-| Atributo | Tipo | Restricciones | Descripción |
-|----------|------|---------------|-------------|
-| id_plato | INT | PK, AI | Identificador único |
-| id_categoria | INT | NOT NULL, FK | Categoría |
-| nombre | VARCHAR(100) | NOT NULL | Nombre del plato |
-| descripcion | VARCHAR(300) | | Descripción |
-| precio | DECIMAL(10,2) | NOT NULL, ≥0 | Precio de venta |
-| disponible | BOOLEAN | DEFAULT TRUE | Disponibilidad |
-| tiempo_preparacion | INT | DEFAULT 15, >0, ≤180 | Minutos estimados |
+### 4. DISH
+| Attribute | Type | Constraints | Description |
+|-----------|------|-------------|-------------|
+| id_dish | INT | PK, AI | Unique identifier |
+| id_category | INT | NOT NULL, FK | Category |
+| name | VARCHAR(100) | NOT NULL | Dish name |
+| description | VARCHAR(300) | | Description |
+| price | DECIMAL(10,2) | NOT NULL, ≥0 | Sale price |
+| available | BOOLEAN | DEFAULT TRUE | Availability |
+| prep_time_minutes | INT | DEFAULT 15, >0, ≤180 | Estimated minutes |
 
-### 5. PEDIDO
-| Atributo | Tipo | Restricciones | Descripción |
-|----------|------|---------------|-------------|
-| id_pedido | INT | PK, AI | Identificador único |
-| id_mesa | INT | NOT NULL, FK | Mesa asociada |
-| id_cliente | INT | FK, NULL | Cliente (opcional) |
-| fecha_hora | TIMESTAMP | DEFAULT NOW() | Cuándo se creó |
-| estado | ENUM | NOT NULL, DEFAULT 'PENDIENTE' | PENDIENTE, EN_PREPARACION, LISTO, ENTREGADO, CANCELADO, FACTURADO |
-| observaciones | VARCHAR(500) | | Notas especiales |
-| total | DECIMAL(10,2) | DEFAULT 0, ≥0 | Total calculado |
+### 5. ORDER
+| Attribute | Type | Constraints | Description |
+|-----------|------|-------------|-------------|
+| id_order | INT | PK, AI | Unique identifier |
+| id_table | INT | NOT NULL, FK | Associated table |
+| id_customer | INT | FK, NULL | Customer (optional) |
+| order_datetime | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+| status | ENUM | NOT NULL, DEFAULT 'PENDING' | PENDING, IN_PREPARATION, READY, DELIVERED, CANCELLED, INVOICED |
+| notes | VARCHAR(500) | | Special notes |
+| total | DECIMAL(10,2) | DEFAULT 0, ≥0 | Calculated total |
 
-### 6. DETALLE_PEDIDO
-| Atributo | Tipo | Restricciones | Descripción |
-|----------|------|---------------|-------------|
-| id_detalle | INT | PK, AI | Identificador único |
-| id_pedido | INT | NOT NULL, FK | Pedido padre |
-| id_plato | INT | NOT NULL, FK | Plato ordenado |
-| cantidad | INT | NOT NULL, >0 | Unidades |
-| precio_unitario | DECIMAL(10,2) | NOT NULL, ≥0 | Precio al momento |
-| subtotal | DECIMAL(10,2) | GENERATED | cantidad × precio_unitario |
-| observaciones | VARCHAR(300) | | Notas del item |
-| UNIQUE(id_pedido, id_plato) | | | Evita duplicados |
+### 6. ORDER_DETAIL
+| Attribute | Type | Constraints | Description |
+|-----------|------|-------------|-------------|
+| id_detail | INT | PK, AI | Unique identifier |
+| id_order | INT | NOT NULL, FK | Parent order |
+| id_dish | INT | NOT NULL, FK | Ordered dish |
+| quantity | INT | NOT NULL, >0 | Units |
+| unit_price | DECIMAL(10,2) | NOT NULL, ≥0 | Price at time of order |
+| subtotal | DECIMAL(10,2) | GENERATED | quantity × unit_price |
+| notes | VARCHAR(300) | | Item notes |
+| UNIQUE(id_order, id_dish) | | | Prevents duplicates |
 
-### 7. FACTURA
-| Atributo | Tipo | Restricciones | Descripción |
-|----------|------|---------------|-------------|
-| id_factura | INT | PK, AI | Identificador único |
-| id_pedido | INT | NOT NULL, FK, UNIQUE | Pedido facturado (1:1) |
-| fecha_emision | TIMESTAMP | DEFAULT NOW() | Cuándo se emitió |
-| subtotal | DECIMAL(10,2) | NOT NULL, ≥0 | Sin impuestos |
-| impuestos | DECIMAL(10,2) | NOT NULL, ≥0, DEFAULT 0 | IVA u otros |
-| total | DECIMAL(10,2) | NOT NULL, ≥0 | subtotal + impuestos |
-| metodo_pago | ENUM | NOT NULL | EFECTIVO, TARJETA_CREDITO, TARJETA_DEBITO, TRANSFERENCIA, QR, MIXTO |
-| estado_pago | ENUM | NOT NULL, DEFAULT 'PENDIENTE' | PENDIENTE, PAGADO, ANULADO, PARCIAL |
-| numero_factura | VARCHAR(20) | NOT NULL, UNIQUE | Número consecutivo |
-| observaciones | VARCHAR(500) | | Notas |
+### 7. INVOICE
+| Attribute | Type | Constraints | Description |
+|-----------|------|-------------|-------------|
+| id_invoice | INT | PK, AI | Unique identifier |
+| id_order | INT | NOT NULL, FK, UNIQUE | Invoiced order (1:1) |
+| issue_date | TIMESTAMP | DEFAULT NOW() | Issue timestamp |
+| subtotal | DECIMAL(10,2) | NOT NULL, ≥0 | Before taxes |
+| taxes | DECIMAL(10,2) | NOT NULL, ≥0, DEFAULT 0 | VAT or other taxes |
+| total | DECIMAL(10,2) | NOT NULL, ≥0 | subtotal + taxes |
+| payment_method | ENUM | NOT NULL | CASH, CREDIT_CARD, DEBIT_CARD, TRANSFER, QR, MIXED |
+| payment_status | ENUM | NOT NULL, DEFAULT 'PENDING' | PENDING, PAID, VOIDED, PARTIAL |
+| invoice_number | VARCHAR(20) | NOT NULL, UNIQUE | Sequential number |
+| notes | VARCHAR(500) | | Notes |
 
-### 8. PAGO_FACTURA
-| Atributo | Tipo | Restricciones | Descripción |
-|----------|------|---------------|-------------|
-| id_pago | INT | PK, AI | Identificador único |
-| id_factura | INT | NOT NULL, FK | Factura pagada |
-| fecha_pago | TIMESTAMP | DEFAULT NOW() | Cuándo se pagó |
-| monto | DECIMAL(10,2) | NOT NULL, >0 | Monto abonado |
-| metodo_pago | ENUM | NOT NULL | EFECTIVO, TARJETA_CREDITO, TARJETA_DEBITO, TRANSFERENCIA, QR |
-| referencia | VARCHAR(100) | | Código autorización |
+### 8. INVOICE_PAYMENT
+| Attribute | Type | Constraints | Description |
+|-----------|------|-------------|-------------|
+| id_payment | INT | PK, AI | Unique identifier |
+| id_invoice | INT | NOT NULL, FK | Paid invoice |
+| payment_date | TIMESTAMP | DEFAULT NOW() | Payment timestamp |
+| amount | DECIMAL(10,2) | NOT NULL, >0 | Amount paid |
+| payment_method | ENUM | NOT NULL | CASH, CREDIT_CARD, DEBIT_CARD, TRANSFER, QR |
+| reference | VARCHAR(100) | | Authorization code |
 
-## Relaciones y Cardinalidades
+## Relationships and Cardinalities
 
-| Entidad A | Relación | Entidad B | Cardinalidad | Tipo |
-|-----------|----------|-----------|--------------|------|
-| CLIENTE | realiza | PEDIDO | 1:N | Identificadora (opcional) |
-| MESA | tiene | PEDIDO | 1:N | Identificadora |
-| PEDIDO | contiene | DETALLE_PEDIDO | 1:N | Identificadora (composición) |
-| PLATO | se incluye en | DETALLE_PEDIDO | 1:N | No identificadora |
-| CATEGORIA_PLATO | clasifica | PLATO | 1:N | No identificadora |
-| PEDIDO | genera | FACTURA | 1:1 | Identificadora |
-| FACTURA | tiene pagos | PAGO_FACTURA | 1:N | Identificadora |
+| Entity A | Relationship | Entity B | Cardinality | Type |
+|----------|--------------|----------|-------------|------|
+| CUSTOMER | places | ORDER | 1:N | Identifying (optional) |
+| TABLE_RESTAURANT | has | ORDER | 1:N | Identifying |
+| ORDER | contains | ORDER_DETAIL | 1:N | Identifying (composition) |
+| DISH | included in | ORDER_DETAIL | 1:N | Non-identifying |
+| DISH_CATEGORY | classifies | DISH | 1:N | Non-identifying |
+| ORDER | generates | INVOICE | 1:1 | Identifying |
+| INVOICE | has payments | INVOICE_PAYMENT | 1:N | Identifying |
 
-## Normalización (3FN)
+## Normalization (3NF)
 
-### 1FN - Primera Forma Normal
-- Todos los atributos son atómicos
-- No hay grupos repetidos
-- Cada tabla tiene PK
+### 1NF - First Normal Form
+- All attributes are atomic
+- No repeating groups
+- Each table has a PK
 
-### 2FN - Segunda Forma Normal
-- Cumple 1FN
-- No hay dependencias parciales (todas las PK son simples, no compuestas excepto DETALLE_PEDIDO que tiene PK sustituta)
-- En DETALLE_PEDIDO: subtotal depende de toda la PK (cantidad + precio_unitario), pero es GENERATED
+### 2NF - Second Normal Form
+- Satisfies 1NF
+- No partial dependencies (all PKs are simple, not composite except ORDER_DETAIL which has a surrogate PK)
+- In ORDER_DETAIL: subtotal depends on the full PK (quantity + unit_price), but is GENERATED
 
-### 3FN - Tercera Forma Normal
-- Cumple 2FN
-- No hay dependencias transitivas
-- Verificación:
-  - CLIENTE: No hay atributos que dependan de otros no-PK
-  - MESA: estado y ubicacion dependen solo de id_mesa
-  - PLATO: precio, disponible dependen solo de id_plato (categoria es FK)
-  - PEDIDO: total es derivado (se mantiene por trigger para performance)
-  - FACTURA: impuestos, total dependen de subtotal (calculados en SP)
+### 3NF - Third Normal Form
+- Satisfies 2NF
+- No transitive dependencies
+- Verification:
+  - CUSTOMER: No attributes depend on other non-PK attributes
+  - TABLE_RESTAURANT: status and location depend only on id_table
+  - DISH: price, available depend only on id_dish (category is FK)
+  - ORDER: total is derived (maintained by trigger for performance)
+  - INVOICE: taxes, total depend on subtotal (calculated in SP)
 
-## Índices Definidos
+## Defined Indexes
 
-| Tabla | Índice | Columnas | Propósito |
-|-------|--------|----------|-----------|
-| pedido | idx_pedido_mesa_estado | (id_mesa, estado) | Buscar pedidos activos por mesa |
-| pedido | idx_pedido_fecha | (fecha_hora) | Reportes por fecha |
-| pedido | idx_pedido_cliente | (id_cliente) | Historial por cliente |
-| detalle_pedido | idx_detalle_pedido | (id_pedido) | Obtener items de un pedido |
-| factura | idx_factura_fecha | (fecha_emision) | Reportes diarios |
-| factura | idx_factura_estado_pago | (estado_pago) | Facturas pendientes |
-| plato | idx_plato_categoria | (id_categoria, disponible) | Menú por categoría |
+| Table | Index | Columns | Purpose |
+|-------|-------|---------|---------|
+| order_restaurant | idx_order_table_status | (id_table, status) | Find active orders by table |
+| order_restaurant | idx_order_date | (order_datetime) | Date-based reports |
+| order_restaurant | idx_order_customer | (id_customer) | Customer history |
+| order_detail | idx_detail_order | (id_order) | Get items for an order |
+| invoice | idx_invoice_date | (issue_date) | Daily reports |
+| invoice | idx_invoice_payment_status | (payment_status) | Pending invoices |
+| dish | idx_dish_category | (id_category, available) | Menu by category |
 
-## Vistas Definidas
+## Defined Views
 
-| Vista | Descripción |
-|-------|-------------|
-| v_mesas_disponibles | Mesas con estado LIBRE |
-| v_menu_activo | Platos disponibles agrupados por categoría |
-| v_pedidos_cocina | Pedidos en cocina (PENDIENTE/EN_PREPARACION) con items |
-| v_facturas_pendientes | Facturas no pagadas con info de mesa y cliente |
-| v_ventas_diarias | Resumen de ventas por día y método de pago |
+| View | Description |
+|------|-------------|
+| v_available_tables | Tables with FREE status |
+| v_active_menu | Available dishes grouped by category |
+| v_kitchen_orders | Orders in kitchen (PENDING/IN_PREPARATION) with items |
+| v_pending_invoices | Unpaid invoices with table and customer info |
+| v_daily_sales | Daily sales summary by payment method |
 
-## Triggers de Integridad
+## Integrity Triggers
 
-| Trigger | Evento | Acción |
-|---------|--------|--------|
-| trg_detalle_pedido_after_insert | INSERT en detalle_pedido | Recalcular total del pedido |
-| trg_detalle_pedido_after_update | UPDATE en detalle_pedido | Recalcular total del pedido |
-| trg_detalle_pedido_after_delete | DELETE en detalle_pedido | Recalcular total del pedido |
-| trg_factura_after_insert | INSERT en factura | Cambiar pedido a FACTURADO |
-| trg_pago_factura_after_insert | INSERT en pago_factura | Actualizar estado_pago de factura |
-| trg_pedido_after_update | UPDATE en pedido | Liberar mesa al facturar/pagar o cancelar |
+| Trigger | Event | Action |
+|---------|-------|--------|
+| trg_order_detail_after_insert | INSERT on order_detail | Recalculate order total |
+| trg_order_detail_after_update | UPDATE on order_detail | Recalculate order total |
+| trg_order_detail_after_delete | DELETE on order_detail | Recalculate order total |
+| trg_invoice_after_insert | INSERT on invoice | Change order to INVOICED |
+| trg_invoice_payment_after_insert | INSERT on invoice_payment | Update invoice payment_status |
+| trg_order_after_update | UPDATE on order_restaurant | Release table on invoice/pay or cancel |
 
 ## Stored Procedures
 
-| SP | Propósito |
-|----|-----------|
-| sp_crear_pedido | Crear pedido validando mesa libre |
-| sp_agregar_plato_pedido | Agregar item validando estado y disponibilidad |
-| sp_generar_factura | Generar factura con IVA 19% |
-| sp_registrar_pago | Registrar pago (soporta pagos parciales/mixtos) |
-| sp_cambiar_estado_mesa | Cambiar estado validando reglas de negocio |
+| SP | Purpose |
+|----|---------|
+| sp_create_order | Create order validating free table |
+| sp_add_dish_to_order | Add item validating state and availability |
+| sp_generate_invoice | Generate invoice with 19% VAT |
+| sp_register_payment | Register payment (supports partial/mixed) |
+| sp_change_table_status | Change status validating business rules |
 
-## Datos Semilla Incluidos
+## Included Seed Data
 
-- 6 categorías de menú
-- 28 platos variados
-- 12 mesas (distintas capacidades y ubicaciones)
-- 8 clientes de prueba
-- 7 pedidos en distintos estados
-- 2 facturas (una pagada, una pendiente)
-- 2 pagos (parciales para factura pendiente)
+- 6 menu categories
+- 28 varied dishes
+- 12 tables (different capacities and locations)
+- 8 test customers
+- 7 orders in various states
+- 2 invoices (one paid, one pending)
+- 2 payments (partial for pending invoice)

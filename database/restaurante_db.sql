@@ -1,626 +1,626 @@
 -- =====================================================================
--- SCRIPT DE BASE DE DATOS - SISTEMA DE GESTIÓN DE RESTAURANTE
--- Fase 4: Modelo Relacional y Persistencia SQL (3FN)
--- Grupo 04 - Ficha 3239188 - ADSO SENA
+-- DATABASE SCRIPT - RESTAURANT MANAGEMENT SYSTEM
+-- Phase 4: Relational Model and SQL Persistence (3NF)
+-- Group 04 - Cohort 3239188 - ADSO SENA
 -- =====================================================================
 
--- Eliminar base de datos si existe y crear nueva
+-- Drop database if exists and create new
 DROP DATABASE IF EXISTS restaurante_db;
 CREATE DATABASE restaurante_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE restaurante_db;
 
 -- =====================================================================
--- TABLA: cliente
+-- TABLE: customer
 -- =====================================================================
-CREATE TABLE cliente (
-    id_cliente        INT AUTO_INCREMENT PRIMARY KEY,
-    nombre            VARCHAR(100) NOT NULL,
-    telefono          VARCHAR(20),
+CREATE TABLE customer (
+    id_customer       INT AUTO_INCREMENT PRIMARY KEY,
+    name              VARCHAR(100) NOT NULL,
+    phone             VARCHAR(20),
     email             VARCHAR(100),
-    direccion         VARCHAR(200),
-    fecha_registro    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    activo            BOOLEAN DEFAULT TRUE,
+    address           VARCHAR(200),
+    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    active            BOOLEAN DEFAULT TRUE,
     
-    CONSTRAINT uk_cliente_email UNIQUE (email),
-    CONSTRAINT chk_cliente_telefono CHECK (telefono IS NULL OR telefono REGEXP '^[0-9+\-\s()]{7,20}$')
-) ENGINE=InnoDB COMMENT='Clientes del restaurante';
+    CONSTRAINT uk_customer_email UNIQUE (email),
+    CONSTRAINT chk_customer_phone CHECK (phone IS NULL OR phone REGEXP '^[0-9+\-\s()]{7,20}$')
+) ENGINE=InnoDB COMMENT='Restaurant customers';
 
 -- =====================================================================
--- TABLA: mesa
+-- TABLE: table_restaurant (reserved word 'table' avoided)
 -- =====================================================================
-CREATE TABLE mesa (
-    id_mesa       INT AUTO_INCREMENT PRIMARY KEY,
-    numero        INT NOT NULL,
-    capacidad     INT NOT NULL,
-    estado        ENUM('LIBRE', 'OCUPADA', 'RESERVADA', 'MANTENIMIENTO') NOT NULL DEFAULT 'LIBRE',
-    ubicacion     VARCHAR(50),
+CREATE TABLE table_restaurant (
+    id_table      INT AUTO_INCREMENT PRIMARY KEY,
+    number        INT NOT NULL,
+    capacity      INT NOT NULL,
+    status        ENUM('FREE', 'OCCUPIED', 'RESERVED', 'MAINTENANCE') NOT NULL DEFAULT 'FREE',
+    location      VARCHAR(50),
     
-    CONSTRAINT uk_mesa_numero UNIQUE (numero),
-    CONSTRAINT chk_mesa_capacidad CHECK (capacidad > 0 AND capacidad <= 20),
-    CONSTRAINT chk_mesa_numero CHECK (numero > 0)
-) ENGINE=InnoDB COMMENT='Mesas del restaurante';
+    CONSTRAINT uk_table_number UNIQUE (number),
+    CONSTRAINT chk_table_capacity CHECK (capacity > 0 AND capacity <= 20),
+    CONSTRAINT chk_table_number CHECK (number > 0)
+) ENGINE=InnoDB COMMENT='Restaurant tables';
 
 -- =====================================================================
--- TABLA: categoria_plato
+-- TABLE: dish_category
 -- =====================================================================
-CREATE TABLE categoria_plato (
-    id_categoria    INT AUTO_INCREMENT PRIMARY KEY,
-    nombre          VARCHAR(50) NOT NULL,
-    descripcion     VARCHAR(200),
-    orden           INT DEFAULT 0,
+CREATE TABLE dish_category (
+    id_category     INT AUTO_INCREMENT PRIMARY KEY,
+    name            VARCHAR(50) NOT NULL,
+    description     VARCHAR(200),
+    display_order   INT DEFAULT 0,
     
-    CONSTRAINT uk_categoria_nombre UNIQUE (nombre)
-) ENGINE=InnoDB COMMENT='Categorías del menú (Entradas, Principales, Postres, Bebidas, etc.)';
+    CONSTRAINT uk_category_name UNIQUE (name)
+) ENGINE=InnoDB COMMENT='Menu categories (Appetizers, Mains, Desserts, Drinks, etc.)';
 
 -- =====================================================================
--- TABLA: plato
+-- TABLE: dish
 -- =====================================================================
-CREATE TABLE plato (
-    id_plato        INT AUTO_INCREMENT PRIMARY KEY,
-    id_categoria    INT NOT NULL,
-    nombre          VARCHAR(100) NOT NULL,
-    descripcion     VARCHAR(300),
-    precio          DECIMAL(10,2) NOT NULL,
-    disponible      BOOLEAN DEFAULT TRUE,
-    tiempo_preparacion INT DEFAULT 15 COMMENT 'Tiempo estimado en minutos',
+CREATE TABLE dish (
+    id_dish             INT AUTO_INCREMENT PRIMARY KEY,
+    id_category         INT NOT NULL,
+    name                VARCHAR(100) NOT NULL,
+    description         VARCHAR(300),
+    price               DECIMAL(10,2) NOT NULL,
+    available           BOOLEAN DEFAULT TRUE,
+    prep_time_minutes   INT DEFAULT 15 COMMENT 'Estimated time in minutes',
     
-    CONSTRAINT fk_plato_categoria FOREIGN KEY (id_categoria) REFERENCES categoria_plato(id_categoria)
+    CONSTRAINT fk_dish_category FOREIGN KEY (id_category) REFERENCES dish_category(id_category)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT chk_plato_precio CHECK (precio >= 0),
-    CONSTRAINT chk_plato_tiempo CHECK (tiempo_preparacion > 0 AND tiempo_preparacion <= 180)
-) ENGINE=InnoDB COMMENT='Platos del menú';
+    CONSTRAINT chk_dish_price CHECK (price >= 0),
+    CONSTRAINT chk_dish_prep_time CHECK (prep_time_minutes > 0 AND prep_time_minutes <= 180)
+) ENGINE=InnoDB COMMENT='Menu dishes';
 
 -- =====================================================================
--- TABLA: pedido
+-- TABLE: order_restaurant (reserved word 'order' avoided)
 -- =====================================================================
-CREATE TABLE pedido (
-    id_pedido       INT AUTO_INCREMENT PRIMARY KEY,
-    id_mesa         INT NOT NULL,
-    id_cliente      INT NULL,
-    fecha_hora      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    estado          ENUM('PENDIENTE', 'EN_PREPARACION', 'LISTO', 'ENTREGADO', 'CANCELADO', 'FACTURADO') NOT NULL DEFAULT 'PENDIENTE',
-    observaciones   VARCHAR(500),
+CREATE TABLE order_restaurant (
+    id_order        INT AUTO_INCREMENT PRIMARY KEY,
+    id_table        INT NOT NULL,
+    id_customer     INT NULL,
+    order_datetime  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status          ENUM('PENDING', 'IN_PREPARATION', 'READY', 'DELIVERED', 'CANCELLED', 'INVOICED') NOT NULL DEFAULT 'PENDING',
+    notes           VARCHAR(500),
     total           DECIMAL(10,2) DEFAULT 0.00,
     
-    CONSTRAINT fk_pedido_mesa FOREIGN KEY (id_mesa) REFERENCES mesa(id_mesa)
+    CONSTRAINT fk_order_table FOREIGN KEY (id_table) REFERENCES table_restaurant(id_table)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT fk_pedido_cliente FOREIGN KEY (id_cliente) REFERENCES cliente(id_cliente)
+    CONSTRAINT fk_order_customer FOREIGN KEY (id_customer) REFERENCES customer(id_customer)
         ON UPDATE CASCADE ON DELETE SET NULL,
-    CONSTRAINT chk_pedido_total CHECK (total >= 0)
-) ENGINE=InnoDB COMMENT='Pedidos realizados en las mesas';
+    CONSTRAINT chk_order_total CHECK (total >= 0)
+) ENGINE=InnoDB COMMENT='Orders placed at tables';
 
 -- =====================================================================
--- TABLA: detalle_pedido (relación N:M entre pedido y plato)
+-- TABLE: order_detail (N:M relationship between order and dish)
 -- =====================================================================
-CREATE TABLE detalle_pedido (
-    id_detalle      INT AUTO_INCREMENT PRIMARY KEY,
-    id_pedido       INT NOT NULL,
-    id_plato        INT NOT NULL,
-    cantidad        INT NOT NULL DEFAULT 1,
-    precio_unitario DECIMAL(10,2) NOT NULL,
-    subtotal        DECIMAL(10,2) GENERATED ALWAYS AS (cantidad * precio_unitario) STORED,
-    observaciones   VARCHAR(300),
+CREATE TABLE order_detail (
+    id_detail       INT AUTO_INCREMENT PRIMARY KEY,
+    id_order        INT NOT NULL,
+    id_dish         INT NOT NULL,
+    quantity        INT NOT NULL DEFAULT 1,
+    unit_price      DECIMAL(10,2) NOT NULL,
+    subtotal        DECIMAL(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
+    notes           VARCHAR(300),
     
-    CONSTRAINT fk_detalle_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido)
+    CONSTRAINT fk_detail_order FOREIGN KEY (id_order) REFERENCES order_restaurant(id_order)
         ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_detalle_plato FOREIGN KEY (id_plato) REFERENCES plato(id_plato)
+    CONSTRAINT fk_detail_dish FOREIGN KEY (id_dish) REFERENCES dish(id_dish)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT uk_detalle_pedido_plato UNIQUE (id_pedido, id_plato),
-    CONSTRAINT chk_detalle_cantidad CHECK (cantidad > 0),
-    CONSTRAINT chk_detalle_precio CHECK (precio_unitario >= 0)
-) ENGINE=InnoDB COMMENT='Líneas de detalle de cada pedido';
+    CONSTRAINT uk_detail_order_dish UNIQUE (id_order, id_dish),
+    CONSTRAINT chk_detail_quantity CHECK (quantity > 0),
+    CONSTRAINT chk_detail_price CHECK (unit_price >= 0)
+) ENGINE=InnoDB COMMENT='Order detail lines';
 
 -- =====================================================================
--- TABLA: factura
+-- TABLE: invoice
 -- =====================================================================
-CREATE TABLE factura (
-    id_factura      INT AUTO_INCREMENT PRIMARY KEY,
-    id_pedido       INT NOT NULL,
-    fecha_emision   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE invoice (
+    id_invoice      INT AUTO_INCREMENT PRIMARY KEY,
+    id_order        INT NOT NULL,
+    issue_date      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     subtotal        DECIMAL(10,2) NOT NULL,
-    impuestos       DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    taxes           DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     total           DECIMAL(10,2) NOT NULL,
-    metodo_pago     ENUM('EFECTIVO', 'TARJETA_CREDITO', 'TARJETA_DEBITO', 'TRANSFERENCIA', 'QR', 'MIXTO') NOT NULL,
-    estado_pago     ENUM('PENDIENTE', 'PAGADO', 'ANULADO', 'PARCIAL') NOT NULL DEFAULT 'PENDIENTE',
-    numero_factura  VARCHAR(20) NOT NULL,
-    observaciones   VARCHAR(500),
+    payment_method  ENUM('CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'TRANSFER', 'QR', 'MIXED') NOT NULL,
+    payment_status  ENUM('PENDING', 'PAID', 'VOIDED', 'PARTIAL') NOT NULL DEFAULT 'PENDING',
+    invoice_number  VARCHAR(20) NOT NULL,
+    notes           VARCHAR(500),
     
-    CONSTRAINT fk_factura_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido)
+    CONSTRAINT fk_invoice_order FOREIGN KEY (id_order) REFERENCES order_restaurant(id_order)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT uk_factura_pedido UNIQUE (id_pedido),
-    CONSTRAINT uk_factura_numero UNIQUE (numero_factura),
-    CONSTRAINT chk_factura_subtotal CHECK (subtotal >= 0),
-    CONSTRAINT chk_factura_impuestos CHECK (impuestos >= 0),
-    CONSTRAINT chk_factura_total CHECK (total >= 0)
-) ENGINE=InnoDB COMMENT='Facturas generadas por pedidos';
+    CONSTRAINT uk_invoice_order UNIQUE (id_order),
+    CONSTRAINT uk_invoice_number UNIQUE (invoice_number),
+    CONSTRAINT chk_invoice_subtotal CHECK (subtotal >= 0),
+    CONSTRAINT chk_invoice_taxes CHECK (taxes >= 0),
+    CONSTRAINT chk_invoice_total CHECK (total >= 0)
+) ENGINE=InnoDB COMMENT='Invoices generated from orders';
 
 -- =====================================================================
--- TABLA: pago_factura (para pagos mixtos o parciales)
+-- TABLE: invoice_payment (for mixed or partial payments)
 -- =====================================================================
-CREATE TABLE pago_factura (
-    id_pago         INT AUTO_INCREMENT PRIMARY KEY,
-    id_factura      INT NOT NULL,
-    fecha_pago      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    monto           DECIMAL(10,2) NOT NULL,
-    metodo_pago     ENUM('EFECTIVO', 'TARJETA_CREDITO', 'TARJETA_DEBITO', 'TRANSFERENCIA', 'QR') NOT NULL,
-    referencia      VARCHAR(100),
+CREATE TABLE invoice_payment (
+    id_payment      INT AUTO_INCREMENT PRIMARY KEY,
+    id_invoice      INT NOT NULL,
+    payment_date    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    amount          DECIMAL(10,2) NOT NULL,
+    payment_method  ENUM('CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'TRANSFER', 'QR') NOT NULL,
+    reference       VARCHAR(100),
     
-    CONSTRAINT fk_pago_factura FOREIGN KEY (id_factura) REFERENCES factura(id_factura)
+    CONSTRAINT fk_payment_invoice FOREIGN KEY (id_invoice) REFERENCES invoice(id_invoice)
         ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT chk_pago_monto CHECK (monto > 0)
-) ENGINE=InnoDB COMMENT='Detalle de pagos aplicados a una factura (soporte pagos mixtos)';
+    CONSTRAINT chk_payment_amount CHECK (amount > 0)
+) ENGINE=InnoDB COMMENT='Payment details applied to an invoice (mixed payments support)';
 
 -- =====================================================================
--- ÍNDICES ADICIONALES PARA OPTIMIZACIÓN DE CONSULTAS
+-- ADDITIONAL INDEXES FOR QUERY OPTIMIZATION
 -- =====================================================================
-CREATE INDEX idx_pedido_mesa_estado ON pedido(id_mesa, estado);
-CREATE INDEX idx_pedido_fecha ON pedido(fecha_hora);
-CREATE INDEX idx_pedido_cliente ON pedido(id_cliente);
-CREATE INDEX idx_detalle_pedido ON detalle_pedido(id_pedido);
-CREATE INDEX idx_factura_fecha ON factura(fecha_emision);
-CREATE INDEX idx_factura_estado_pago ON factura(estado_pago);
-CREATE INDEX idx_plato_categoria ON plato(id_categoria, disponible);
-
--- =====================================================================
--- VISTAS ÚTILES
--- =====================================================================
-
--- Vista: Mesas disponibles con su capacidad
-CREATE VIEW v_mesas_disponibles AS
-SELECT id_mesa, numero, capacidad, ubicacion
-FROM mesa
-WHERE estado = 'LIBRE' AND capacidad > 0;
-
--- Vista: Menú activo por categoría
-CREATE VIEW v_menu_activo AS
-SELECT p.id_plato, p.nombre, p.descripcion, p.precio, p.tiempo_preparacion,
-       c.nombre AS categoria
-FROM plato p
-JOIN categoria_plato c ON p.id_categoria = c.id_categoria
-WHERE p.disponible = TRUE
-ORDER BY c.orden, p.nombre;
-
--- Vista: Pedidos pendientes de cocina
-CREATE VIEW v_pedidos_cocina AS
-SELECT pe.id_pedido, pe.id_mesa, m.numero AS numero_mesa, pe.fecha_hora,
-       pe.estado, pe.observaciones,
-       GROUP_CONCAT(CONCAT(dp.cantidad, 'x ', pl.nombre) SEPARATOR ', ') AS items
-FROM pedido pe
-JOIN mesa m ON pe.id_mesa = m.id_mesa
-JOIN detalle_pedido dp ON pe.id_pedido = dp.id_pedido
-JOIN plato pl ON dp.id_plato = pl.id_plato
-WHERE pe.estado IN ('PENDIENTE', 'EN_PREPARACION')
-GROUP BY pe.id_pedido
-ORDER BY pe.fecha_hora;
-
--- Vista: Facturas pendientes de pago
-CREATE VIEW v_facturas_pendientes AS
-SELECT f.id_factura, f.numero_factura, f.fecha_emision, f.total, f.estado_pago,
-       pe.id_mesa, m.numero AS numero_mesa, c.nombre AS cliente
-FROM factura f
-JOIN pedido pe ON f.id_pedido = pe.id_pedido
-JOIN mesa m ON pe.id_mesa = m.id_mesa
-LEFT JOIN cliente c ON pe.id_cliente = c.id_cliente
-WHERE f.estado_pago IN ('PENDIENTE', 'PARCIAL')
-ORDER BY f.fecha_emision;
-
--- Vista: Ventas diarias
-CREATE VIEW v_ventas_diarias AS
-SELECT DATE(fecha_emision) AS fecha,
-       COUNT(*) AS total_facturas,
-       SUM(total) AS total_ventas,
-       SUM(CASE WHEN metodo_pago = 'EFECTIVO' THEN total ELSE 0 END) AS ventas_efectivo,
-       SUM(CASE WHEN metodo_pago IN ('TARJETA_CREDITO', 'TARJETA_DEBITO') THEN total ELSE 0 END) AS ventas_tarjeta,
-       SUM(CASE WHEN metodo_pago = 'TRANSFERENCIA' THEN total ELSE 0 END) AS ventas_transferencia,
-       SUM(CASE WHEN metodo_pago = 'QR' THEN total ELSE 0 END) AS ventas_qr
-FROM factura
-WHERE estado_pago = 'PAGADO'
-GROUP BY DATE(fecha_emision)
-ORDER BY fecha DESC;
+CREATE INDEX idx_order_table_status ON order_restaurant(id_table, status);
+CREATE INDEX idx_order_date ON order_restaurant(order_datetime);
+CREATE INDEX idx_order_customer ON order_restaurant(id_customer);
+CREATE INDEX idx_detail_order ON order_detail(id_order);
+CREATE INDEX idx_invoice_date ON invoice(issue_date);
+CREATE INDEX idx_invoice_payment_status ON invoice(payment_status);
+CREATE INDEX idx_dish_category ON dish(id_category, available);
 
 -- =====================================================================
--- TRIGGERS PARA MANTENER CONSISTENCIA
+-- USEFUL VIEWS
+-- =====================================================================
+
+-- View: Available tables with capacity
+CREATE VIEW v_available_tables AS
+SELECT id_table, number, capacity, location
+FROM table_restaurant
+WHERE status = 'FREE' AND capacity > 0;
+
+-- View: Active menu by category
+CREATE VIEW v_active_menu AS
+SELECT d.id_dish, d.name, d.description, d.price, d.prep_time_minutes,
+       c.name AS category
+FROM dish d
+JOIN dish_category c ON d.id_category = c.id_category
+WHERE d.available = TRUE
+ORDER BY c.display_order, d.name;
+
+-- View: Orders pending in kitchen
+CREATE VIEW v_kitchen_orders AS
+SELECT o.id_order, o.id_table, t.number AS table_number, o.order_datetime,
+       o.status, o.notes,
+       GROUP_CONCAT(CONCAT(od.quantity, 'x ', d.name) SEPARATOR ', ') AS items
+FROM order_restaurant o
+JOIN table_restaurant t ON o.id_table = t.id_table
+JOIN order_detail od ON o.id_order = od.id_order
+JOIN dish d ON od.id_dish = d.id_dish
+WHERE o.status IN ('PENDING', 'IN_PREPARATION')
+GROUP BY o.id_order
+ORDER BY o.order_datetime;
+
+-- View: Pending invoices
+CREATE VIEW v_pending_invoices AS
+SELECT i.id_invoice, i.invoice_number, i.issue_date, i.total, i.payment_status,
+       o.id_table, t.number AS table_number, c.name AS customer
+FROM invoice i
+JOIN order_restaurant o ON i.id_order = o.id_order
+JOIN table_restaurant t ON o.id_table = t.id_table
+LEFT JOIN customer c ON o.id_customer = c.id_customer
+WHERE i.payment_status IN ('PENDING', 'PARTIAL')
+ORDER BY i.issue_date;
+
+-- View: Daily sales
+CREATE VIEW v_daily_sales AS
+SELECT DATE(issue_date) AS date,
+       COUNT(*) AS total_invoices,
+       SUM(total) AS total_sales,
+       SUM(CASE WHEN payment_method = 'CASH' THEN total ELSE 0 END) AS cash_sales,
+       SUM(CASE WHEN payment_method IN ('CREDIT_CARD', 'DEBIT_CARD') THEN total ELSE 0 END) AS card_sales,
+       SUM(CASE WHEN payment_method = 'TRANSFER' THEN total ELSE 0 END) AS transfer_sales,
+       SUM(CASE WHEN payment_method = 'QR' THEN total ELSE 0 END) AS qr_sales
+FROM invoice
+WHERE payment_status = 'PAID'
+GROUP BY DATE(issue_date)
+ORDER BY date DESC;
+
+-- =====================================================================
+-- TRIGGERS FOR CONSISTENCY
 -- =====================================================================
 
 DELIMITER //
 
--- Trigger: Actualizar total del pedido al insertar/modificar/eliminar detalle
-CREATE TRIGGER trg_detalle_pedido_after_insert
-AFTER INSERT ON detalle_pedido
+-- Trigger: Update order total on detail insert/update/delete
+CREATE TRIGGER trg_order_detail_after_insert
+AFTER INSERT ON order_detail
 FOR EACH ROW
 BEGIN
-    UPDATE pedido
+    UPDATE order_restaurant
     SET total = (
         SELECT COALESCE(SUM(subtotal), 0)
-        FROM detalle_pedido
-        WHERE id_pedido = NEW.id_pedido
+        FROM order_detail
+        WHERE id_order = NEW.id_order
     )
-    WHERE id_pedido = NEW.id_pedido;
+    WHERE id_order = NEW.id_order;
 END//
 
-CREATE TRIGGER trg_detalle_pedido_after_update
-AFTER UPDATE ON detalle_pedido
+CREATE TRIGGER trg_order_detail_after_update
+AFTER UPDATE ON order_detail
 FOR EACH ROW
 BEGIN
-    UPDATE pedido
+    UPDATE order_restaurant
     SET total = (
         SELECT COALESCE(SUM(subtotal), 0)
-        FROM detalle_pedido
-        WHERE id_pedido = NEW.id_pedido
+        FROM order_detail
+        WHERE id_order = NEW.id_order
     )
-    WHERE id_pedido = NEW.id_pedido;
+    WHERE id_order = NEW.id_order;
 END//
 
-CREATE TRIGGER trg_detalle_pedido_after_delete
-AFTER DELETE ON detalle_pedido
+CREATE TRIGGER trg_order_detail_after_delete
+AFTER DELETE ON order_detail
 FOR EACH ROW
 BEGIN
-    UPDATE pedido
+    UPDATE order_restaurant
     SET total = (
         SELECT COALESCE(SUM(subtotal), 0)
-        FROM detalle_pedido
-        WHERE id_pedido = OLD.id_pedido
+        FROM order_detail
+        WHERE id_order = OLD.id_order
     )
-    WHERE id_pedido = OLD.id_pedido;
+    WHERE id_order = OLD.id_order;
 END//
 
--- Trigger: Al facturar, cambiar estado del pedido a FACTURADO
-CREATE TRIGGER trg_factura_after_insert
-AFTER INSERT ON factura
+-- Trigger: On invoice creation, change order status to INVOICED
+CREATE TRIGGER trg_invoice_after_insert
+AFTER INSERT ON invoice
 FOR EACH ROW
 BEGIN
-    UPDATE pedido
-    SET estado = 'FACTURADO'
-    WHERE id_pedido = NEW.id_pedido;
+    UPDATE order_restaurant
+    SET status = 'INVOICED'
+    WHERE id_order = NEW.id_order;
 END//
 
--- Trigger: Actualizar estado_pago de factura según pagos aplicados
-CREATE TRIGGER trg_pago_factura_after_insert
-AFTER INSERT ON pago_factura
+-- Trigger: Update invoice payment_status based on payments applied
+CREATE TRIGGER trg_invoice_payment_after_insert
+AFTER INSERT ON invoice_payment
 FOR EACH ROW
 BEGIN
-    DECLARE total_pagado DECIMAL(10,2);
-    DECLARE total_factura DECIMAL(10,2);
+    DECLARE total_paid DECIMAL(10,2);
+    DECLARE total_invoice DECIMAL(10,2);
     
-    SELECT SUM(monto) INTO total_pagado FROM pago_factura WHERE id_factura = NEW.id_factura;
-    SELECT total INTO total_factura FROM factura WHERE id_factura = NEW.id_factura;
+    SELECT SUM(amount) INTO total_paid FROM invoice_payment WHERE id_invoice = NEW.id_invoice;
+    SELECT total INTO total_invoice FROM invoice WHERE id_invoice = NEW.id_invoice;
     
-    IF total_pagado >= total_factura THEN
-        UPDATE factura SET estado_pago = 'PAGADO' WHERE id_factura = NEW.id_factura;
-    ELSEIF total_pagado > 0 THEN
-        UPDATE factura SET estado_pago = 'PARCIAL' WHERE id_factura = NEW.id_factura;
+    IF total_paid >= total_invoice THEN
+        UPDATE invoice SET payment_status = 'PAID' WHERE id_invoice = NEW.id_invoice;
+    ELSEIF total_paid > 0 THEN
+        UPDATE invoice SET payment_status = 'PARTIAL' WHERE id_invoice = NEW.id_invoice;
     END IF;
 END//
 
--- Trigger: Al liberar mesa (pedido facturado y pagado), cambiar estado mesa a LIBRE
-CREATE TRIGGER trg_pedido_after_update
-AFTER UPDATE ON pedido
+-- Trigger: On table release (invoiced and paid order), change table status to FREE
+CREATE TRIGGER trg_order_after_update
+AFTER UPDATE ON order_restaurant
 FOR EACH ROW
 BEGIN
-    IF NEW.estado = 'FACTURADO' AND OLD.estado != 'FACTURADO' THEN
-        -- Verificar si la factura está pagada
+    IF NEW.status = 'INVOICED' AND OLD.status != 'INVOICED' THEN
+        -- Check if invoice is paid
         IF EXISTS (
-            SELECT 1 FROM factura f
-            WHERE f.id_pedido = NEW.id_pedido AND f.estado_pago = 'PAGADO'
+            SELECT 1 FROM invoice i
+            WHERE i.id_order = NEW.id_order AND i.payment_status = 'PAID'
         ) THEN
-            UPDATE mesa SET estado = 'LIBRE' WHERE id_mesa = NEW.id_mesa;
+            UPDATE table_restaurant SET status = 'FREE' WHERE id_table = NEW.id_table;
         END IF;
-    ELSEIF NEW.estado = 'CANCELADO' AND OLD.estado != 'CANCELADO' THEN
-        UPDATE mesa SET estado = 'LIBRE' WHERE id_mesa = NEW.id_mesa;
-    ELSEIF NEW.estado IN ('PENDIENTE', 'EN_PREPARACION', 'LISTO', 'ENTREGADO') AND OLD.estado = 'LIBRE' THEN
-        UPDATE mesa SET estado = 'OCUPADA' WHERE id_mesa = NEW.id_mesa;
+    ELSEIF NEW.status = 'CANCELLED' AND OLD.status != 'CANCELLED' THEN
+        UPDATE table_restaurant SET status = 'FREE' WHERE id_table = NEW.id_table;
+    ELSEIF NEW.status IN ('PENDING', 'IN_PREPARATION', 'READY', 'DELIVERED') AND OLD.status = 'FREE' THEN
+        UPDATE table_restaurant SET status = 'OCCUPIED' WHERE id_table = NEW.id_table;
     END IF;
 END//
 
 DELIMITER ;
 
 -- =====================================================================
--- PROCEDIMIENTOS ALMACENADOS ÚTILES
+-- USEFUL STORED PROCEDURES
 -- =====================================================================
 
 DELIMITER //
 
--- SP: Crear pedido nuevo
-CREATE PROCEDURE sp_crear_pedido(
-    IN p_id_mesa INT,
-    IN p_id_cliente INT,
-    IN p_observaciones VARCHAR(500)
+-- SP: Create new order
+CREATE PROCEDURE sp_create_order(
+    IN p_id_table INT,
+    IN p_id_customer INT,
+    IN p_notes VARCHAR(500)
 )
 BEGIN
-    DECLARE v_mesa_estado VARCHAR(20);
+    DECLARE v_table_status VARCHAR(20);
     
-    SELECT estado INTO v_mesa_estado FROM mesa WHERE id_mesa = p_id_mesa;
+    SELECT status INTO v_table_status FROM table_restaurant WHERE id_table = p_id_table;
     
-    IF v_mesa_estado != 'LIBRE' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La mesa no está disponible';
+    IF v_table_status != 'FREE' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table is not available';
     END IF;
     
-    INSERT INTO pedido (id_mesa, id_cliente, observaciones, estado)
-    VALUES (p_id_mesa, p_id_cliente, p_observaciones, 'PENDIENTE');
+    INSERT INTO order_restaurant (id_table, id_customer, notes, status)
+    VALUES (p_id_table, p_id_customer, p_notes, 'PENDING');
     
-    UPDATE mesa SET estado = 'OCUPADA' WHERE id_mesa = p_id_mesa;
+    UPDATE table_restaurant SET status = 'OCCUPIED' WHERE id_table = p_id_table;
     
-    SELECT LAST_INSERT_ID() AS id_pedido;
+    SELECT LAST_INSERT_ID() AS id_order;
 END//
 
--- SP: Agregar plato a pedido
-CREATE PROCEDURE sp_agregar_plato_pedido(
-    IN p_id_pedido INT,
-    IN p_id_plato INT,
-    IN p_cantidad INT
+-- SP: Add dish to order
+CREATE PROCEDURE sp_add_dish_to_order(
+    IN p_id_order INT,
+    IN p_id_dish INT,
+    IN p_quantity INT
 )
 BEGIN
-    DECLARE v_precio DECIMAL(10,2);
-    DECLARE v_pedido_estado VARCHAR(20);
-    DECLARE v_plato_disponible BOOLEAN;
+    DECLARE v_price DECIMAL(10,2);
+    DECLARE v_order_status VARCHAR(20);
+    DECLARE v_dish_available BOOLEAN;
     
-    SELECT estado INTO v_pedido_estado FROM pedido WHERE id_pedido = p_id_pedido;
-    SELECT disponible, precio INTO v_plato_disponible, v_precio FROM plato WHERE id_plato = p_id_plato;
+    SELECT status INTO v_order_status FROM order_restaurant WHERE id_order = p_id_order;
+    SELECT available, price INTO v_dish_available, v_price FROM dish WHERE id_dish = p_id_dish;
     
-    IF v_pedido_estado NOT IN ('PENDIENTE', 'EN_PREPARACION') THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede modificar un pedido en este estado';
+    IF v_order_status NOT IN ('PENDING', 'IN_PREPARATION') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cannot modify order in this state';
     END IF;
     
-    IF NOT v_plato_disponible THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El plato no está disponible';
+    IF NOT v_dish_available THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Dish is not available';
     END IF;
     
-    INSERT INTO detalle_pedido (id_pedido, id_plato, cantidad, precio_unitario)
-    VALUES (p_id_pedido, p_id_plato, p_cantidad, v_precio)
+    INSERT INTO order_detail (id_order, id_dish, quantity, unit_price)
+    VALUES (p_id_order, p_id_dish, p_quantity, v_price)
     ON DUPLICATE KEY UPDATE 
-        cantidad = cantidad + p_cantidad,
-        precio_unitario = v_precio;
+        quantity = quantity + p_quantity,
+        unit_price = v_price;
     
-    UPDATE pedido SET estado = 'EN_PREPARACION' 
-    WHERE id_pedido = p_id_pedido AND estado = 'PENDIENTE';
+    UPDATE order_restaurant SET status = 'IN_PREPARATION' 
+    WHERE id_order = p_id_order AND status = 'PENDING';
 END//
 
--- SP: Generar factura para un pedido
-CREATE PROCEDURE sp_generar_factura(
-    IN p_id_pedido INT,
-    IN p_metodo_pago VARCHAR(20),
-    IN p_numero_factura VARCHAR(20)
+-- SP: Generate invoice for an order
+CREATE PROCEDURE sp_generate_invoice(
+    IN p_id_order INT,
+    IN p_payment_method VARCHAR(20),
+    IN p_invoice_number VARCHAR(20)
 )
 BEGIN
     DECLARE v_total DECIMAL(10,2);
-    DECLARE v_impuestos DECIMAL(10,2);
-    DECLARE v_pedido_estado VARCHAR(20);
-    DECLARE v_existe_factura INT;
+    DECLARE v_taxes DECIMAL(10,2);
+    DECLARE v_order_status VARCHAR(20);
+    DECLARE v_invoice_exists INT;
     
-    SELECT estado, total INTO v_pedido_estado, v_total FROM pedido WHERE id_pedido = p_id_pedido;
-    SELECT COUNT(*) INTO v_existe_factura FROM factura WHERE id_pedido = p_id_pedido;
+    SELECT status, total INTO v_order_status, v_total FROM order_restaurant WHERE id_order = p_id_order;
+    SELECT COUNT(*) INTO v_invoice_exists FROM invoice WHERE id_order = p_id_order;
     
-    IF v_existe_factura > 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El pedido ya tiene factura generada';
+    IF v_invoice_exists > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Order already has an invoice generated';
     END IF;
     
-    IF v_pedido_estado NOT IN ('ENTREGADO', 'EN_PREPARACION', 'LISTO') THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El pedido no está listo para facturar';
+    IF v_order_status NOT IN ('DELIVERED', 'IN_PREPARATION', 'READY') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Order is not ready for invoicing';
     END IF;
     
-    SET v_impuestos = v_total * 0.19; -- IVA 19%
+    SET v_taxes = v_total * 0.19; -- VAT 19%
     
-    INSERT INTO factura (id_pedido, subtotal, impuestos, total, metodo_pago, numero_factura, estado_pago)
-    VALUES (p_id_pedido, v_total, v_impuestos, v_total + v_impuestos, p_metodo_pago, p_numero_factura, 
-            CASE WHEN p_metodo_pago = 'EFECTIVO' THEN 'PAGADO' ELSE 'PENDIENTE' END);
+    INSERT INTO invoice (id_order, subtotal, taxes, total, payment_method, invoice_number, payment_status)
+    VALUES (p_id_order, v_total, v_taxes, v_total + v_taxes, p_payment_method, p_invoice_number, 
+            CASE WHEN p_payment_method = 'CASH' THEN 'PAID' ELSE 'PENDING' END);
     
-    UPDATE pedido SET estado = 'FACTURADO' WHERE id_pedido = p_id_pedido;
+    UPDATE order_restaurant SET status = 'INVOICED' WHERE id_order = p_id_order;
     
-    SELECT LAST_INSERT_ID() AS id_factura;
+    SELECT LAST_INSERT_ID() AS id_invoice;
 END//
 
--- SP: Registrar pago de factura
-CREATE PROCEDURE sp_registrar_pago(
-    IN p_id_factura INT,
-    IN p_monto DECIMAL(10,2),
-    IN p_metodo_pago VARCHAR(20),
-    IN p_referencia VARCHAR(100)
+-- SP: Register invoice payment
+CREATE PROCEDURE sp_register_payment(
+    IN p_id_invoice INT,
+    IN p_amount DECIMAL(10,2),
+    IN p_payment_method VARCHAR(20),
+    IN p_reference VARCHAR(100)
 )
 BEGIN
-    DECLARE v_estado_actual VARCHAR(20);
-    DECLARE v_total_factura DECIMAL(10,2);
+    DECLARE v_current_status VARCHAR(20);
+    DECLARE v_invoice_total DECIMAL(10,2);
     
-    SELECT estado_pago, total INTO v_estado_actual, v_total_factura FROM factura WHERE id_factura = p_id_factura;
+    SELECT payment_status, total INTO v_current_status, v_invoice_total FROM invoice WHERE id_invoice = p_id_invoice;
     
-    IF v_estado_actual = 'PAGADO' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La factura ya está pagada';
+    IF v_current_status = 'PAID' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invoice is already paid';
     END IF;
     
-    INSERT INTO pago_factura (id_factura, monto, metodo_pago, referencia)
-    VALUES (p_id_factura, p_monto, p_metodo_pago, p_referencia);
+    INSERT INTO invoice_payment (id_invoice, amount, payment_method, reference)
+    VALUES (p_id_invoice, p_amount, p_payment_method, p_reference);
 END//
 
--- SP: Cambiar estado de mesa
-CREATE PROCEDURE sp_cambiar_estado_mesa(
-    IN p_id_mesa INT,
-    IN p_nuevo_estado VARCHAR(20)
+-- SP: Change table status
+CREATE PROCEDURE sp_change_table_status(
+    IN p_id_table INT,
+    IN p_new_status VARCHAR(20)
 )
 BEGIN
-    DECLARE v_estado_actual VARCHAR(20);
+    DECLARE v_current_status VARCHAR(20);
     
-    SELECT estado INTO v_estado_actual FROM mesa WHERE id_mesa = p_id_mesa;
+    SELECT status INTO v_current_status FROM table_restaurant WHERE id_table = p_id_table;
     
-    IF v_estado_actual = 'OCUPADA' AND p_nuevo_estado = 'LIBRE' THEN
-        -- Verificar que no haya pedidos activos
+    IF v_current_status = 'OCCUPIED' AND p_new_status = 'FREE' THEN
+        -- Verify no active orders
         IF EXISTS (
-            SELECT 1 FROM pedido 
-            WHERE id_mesa = p_id_mesa AND estado NOT IN ('FACTURADO', 'CANCELADO')
+            SELECT 1 FROM order_restaurant 
+            WHERE id_table = p_id_table AND status NOT IN ('INVOICED', 'CANCELLED')
         ) THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La mesa tiene pedidos activos';
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table has active orders';
         END IF;
     END IF;
     
-    UPDATE mesa SET estado = p_nuevo_estado WHERE id_mesa = p_id_mesa;
+    UPDATE table_restaurant SET status = p_new_status WHERE id_table = p_id_table;
 END//
 
 DELIMITER ;
 
 -- =====================================================================
--- DATOS DE PRUEBA (SEED DATA)
+-- SEED DATA
 -- =====================================================================
 
--- Categorías del menú
-INSERT INTO categoria_plato (nombre, descripcion, orden) VALUES
-('Entradas', 'Platos para comenzar la comida', 1),
-('Platos Fuertes', 'Platos principales', 2),
-('Postres', 'Dulces y postres', 3),
-('Bebidas Frías', 'Refrescos, jugos, aguas', 4),
-('Bebidas Calientes', 'Café, té, chocolate', 5),
-('Licores', 'Cervezas, vinos, cócteles', 6);
+-- Menu categories
+INSERT INTO dish_category (name, description, display_order) VALUES
+('Appetizers', 'Starters to begin the meal', 1),
+('Main Courses', 'Main dishes', 2),
+('Desserts', 'Sweets and desserts', 3),
+('Cold Drinks', 'Soft drinks, juices, waters', 4),
+('Hot Drinks', 'Coffee, tea, chocolate', 5),
+('Alcoholic Drinks', 'Beers, wines, cocktails', 6);
 
--- Platos del menú
-INSERT INTO plato (id_categoria, nombre, descripcion, precio, tiempo_preparacion) VALUES
--- Entradas
-(1, 'Sopa de Tomate', 'Sopa casera de tomate con albahaca', 12000.00, 10),
-(1, 'Ensalada César', 'Lechuga, crutones, parmesano, aderezo césar', 15000.00, 8),
-(1, 'Empanadas de Carne', '3 empanadas criollas con hogao', 10000.00, 12),
-(1, 'Ceviche de Camarón', 'Camarón fresco en limón con cebolla y cilantro', 18000.00, 15),
+-- Menu dishes
+INSERT INTO dish (id_category, name, description, price, prep_time_minutes) VALUES
+-- Appetizers
+(1, 'Tomato Soup', 'Homemade tomato soup with basil', 12000.00, 10),
+(1, 'Caesar Salad', 'Lettuce, croutons, parmesan, caesar dressing', 15000.00, 8),
+(1, 'Beef Empanadas', '3 Colombian-style empanadas with hogao', 10000.00, 12),
+(1, 'Shrimp Ceviche', 'Fresh shrimp in lime with onion and cilantro', 18000.00, 15),
 
--- Platos Fuertes
-(2, 'Bandeja Paisa', 'Frijol, arroz, carne, chorizo, huevo, plátano, arepa, aguacate', 35000.00, 25),
-(2, 'Pechuga a la Plancha', 'Pechuga de pollo, arroz, ensalada, papa salada', 22000.00, 20),
-(2, 'Salmón al Horno', 'Salmón con verduras asadas y puré de papa', 38000.00, 30),
-(2, 'Lasaña de Carne', 'Lasaña casera con carne, bechamel y queso gratinado', 25000.00, 25),
-(2, 'Arroz con Pollo', 'Arroz con pollo, verduras, hogao', 20000.00, 18),
-(2, 'Hamburguesa Artesanal', 'Carne 200g, queso, lechuga, tomate, papas fritas', 24000.00, 15),
+-- Main Courses
+(2, 'Bandeja Paisa', 'Beans, rice, meat, chorizo, egg, plantain, arepa, avocado', 35000.00, 25),
+(2, 'Grilled Chicken Breast', 'Chicken breast, rice, salad, salted potatoes', 22000.00, 20),
+(2, 'Baked Salmon', 'Salmon with roasted vegetables and mashed potatoes', 38000.00, 30),
+(2, 'Meat Lasagna', 'Homemade lasagna with meat, bechamel, gratinated cheese', 25000.00, 25),
+(2, 'Chicken Rice', 'Rice with chicken, vegetables, hogao', 20000.00, 18),
+(2, 'Artisan Burger', '200g beef, cheese, lettuce, tomato, fries', 24000.00, 15),
 
--- Postres
-(3, 'Tiramisú', 'Postre italiano de café y mascarpone', 12000.00, 5),
-(3, 'Flan de Caramelo', 'Flan casero con caramelo líquido', 8000.00, 3),
-(3, 'Brownie con Helado', 'Brownie tibio con bola de helado de vainilla', 14000.00, 8),
-(3, 'Copa de Frutas', 'Frutas de temporada con yogur y miel', 10000.00, 5),
+-- Desserts
+(3, 'Tiramisu', 'Italian coffee and mascarpone dessert', 12000.00, 5),
+(3, 'Caramel Flan', 'Homemade flan with liquid caramel', 8000.00, 3),
+(3, 'Brownie with Ice Cream', 'Warm brownie with vanilla ice cream scoop', 14000.00, 8),
+(3, 'Fruit Cup', 'Seasonal fruits with yogurt and honey', 10000.00, 5),
 
--- Bebidas Frías
-(4, 'Jugo Natural', 'Jugo de fruta del día (maracuyá, mora, lulo)', 6000.00, 3),
-(4, 'Limonada de Coco', 'Limonada con leche de coco', 7000.00, 3),
-(4, 'Gaseosa', 'Coca Cola, Sprite, Fanta (lata 350ml)', 4000.00, 1),
-(4, 'Agua Mineral', 'Botella 600ml', 3000.00, 1),
-(4, 'Malteada', 'Vainilla, chocolate o fresa', 9000.00, 5),
+-- Cold Drinks
+(4, 'Natural Juice', 'Fruit of the day juice (passion fruit, blackberry, lulo)', 6000.00, 3),
+(4, 'Coconut Lemonade', 'Lemonade with coconut milk', 7000.00, 3),
+(4, 'Soda', 'Coca Cola, Sprite, Fanta (350ml can)', 4000.00, 1),
+(4, 'Mineral Water', '600ml bottle', 3000.00, 1),
+(4, 'Milkshake', 'Vanilla, chocolate or strawberry', 9000.00, 5),
 
--- Bebidas Calientes
-(5, 'Café Americano', 'Café negro colombiano', 4000.00, 3),
-(5, 'Café con Leche', 'Café con leche entera', 4500.00, 3),
-(5, 'Chocolate Caliente', 'Chocolate colombiano con queso', 6000.00, 5),
-(5, 'Té de Hierbas', 'Manzanilla, menta, limón', 4000.00, 3),
+-- Hot Drinks
+(5, 'American Coffee', 'Black Colombian coffee', 4000.00, 3),
+(5, 'Coffee with Milk', 'Coffee with whole milk', 4500.00, 3),
+(5, 'Hot Chocolate', 'Colombian chocolate with cheese', 6000.00, 5),
+(5, 'Herbal Tea', 'Chamomile, mint, lemon', 4000.00, 3),
 
--- Licores
-(6, 'Cerveza Nacional', 'Águila, Club Colombia, Poker (330ml)', 5000.00, 2),
-(6, 'Cerveza Artesanal', 'Cerveza artesanal local (330ml)', 8000.00, 2),
-(6, 'Copa de Vino Tinto', 'Vino tinto reserva (150ml)', 15000.00, 2),
-(6, 'Mojito', 'Ron, menta, limón, azúcar, soda', 18000.00, 5);
+-- Alcoholic Drinks
+(6, 'National Beer', 'Aguila, Club Colombia, Poker (330ml)', 5000.00, 2),
+(6, 'Craft Beer', 'Local craft beer (330ml)', 8000.00, 2),
+(6, 'Red Wine Glass', 'Reserve red wine (150ml)', 15000.00, 2),
+(6, 'Mojito', 'Rum, mint, lime, sugar, soda', 18000.00, 5);
 
--- Mesas del restaurante
-INSERT INTO mesa (numero, capacidad, estado, ubicacion) VALUES
-(1, 2, 'LIBRE', 'Terraza'),
-(2, 2, 'LIBRE', 'Terraza'),
-(3, 4, 'LIBRE', 'Salón Principal'),
-(4, 4, 'LIBRE', 'Salón Principal'),
-(5, 4, 'LIBRE', 'Salón Principal'),
-(6, 6, 'LIBRE', 'Salón Principal'),
-(7, 6, 'LIBRE', 'Salón Principal'),
-(8, 8, 'LIBRE', 'Salón VIP'),
-(9, 8, 'LIBRE', 'Salón VIP'),
-(10, 10, 'LIBRE', 'Salón VIP'),
-(11, 4, 'MANTENIMIENTO', 'Salón Principal'),
-(12, 2, 'LIBRE', 'Barra');
+-- Restaurant tables
+INSERT INTO table_restaurant (number, capacity, status, location) VALUES
+(1, 2, 'FREE', 'Terrace'),
+(2, 2, 'FREE', 'Terrace'),
+(3, 4, 'FREE', 'Main Hall'),
+(4, 4, 'FREE', 'Main Hall'),
+(5, 4, 'FREE', 'Main Hall'),
+(6, 6, 'FREE', 'Main Hall'),
+(7, 6, 'FREE', 'Main Hall'),
+(8, 8, 'FREE', 'VIP Room'),
+(9, 8, 'FREE', 'VIP Room'),
+(10, 10, 'FREE', 'VIP Room'),
+(11, 4, 'MAINTENANCE', 'Main Hall'),
+(12, 2, 'FREE', 'Bar');
 
--- Clientes de prueba
-INSERT INTO cliente (nombre, telefono, email, direccion) VALUES
-('Juan Pérez González', '3101234567', 'juan.perez@email.com', 'Calle 45 # 12-34, Bogotá'),
-('María Rodríguez López', '3159876543', 'maria.rodriguez@email.com', 'Carrera 15 # 89-20, Bogotá'),
-('Carlos Andrés Gómez', '3205551234', 'carlos.gomez@email.com', 'Av. 68 # 45-67, Bogotá'),
-('Ana Lucía Martínez', '3124445566', 'ana.martinez@email.com', 'Calle 100 # 7-89, Bogotá'),
-('Pedro Sánchez', '3187778899', 'pedro.sanchez@email.com', 'Carrera 7 # 150-25, Bogotá'),
-('Laura Fernández', '3112223344', 'laura.fernandez@email.com', 'Calle 80 # 10-15, Bogotá'),
-('Diego Ramírez', '3163334455', 'diego.ramirez@email.com', 'Av. Boyacá # 65-40, Bogotá'),
-('Sofía Herrera', '3146667788', 'sofia.herrera@email.com', 'Calle 127 # 15-30, Bogotá');
+-- Test customers
+INSERT INTO customer (name, phone, email, address) VALUES
+('Juan Perez Gonzalez', '3101234567', 'juan.perez@email.com', '45th St # 12-34, Bogota'),
+('Maria Rodriguez Lopez', '3159876543', 'maria.rodriguez@email.com', '15th Ave # 89-20, Bogota'),
+('Carlos Andres Gomez', '3205551234', 'carlos.gomez@email.com', '68th Ave # 45-67, Bogota'),
+('Ana Lucia Martinez', '3124445566', 'ana.martinez@email.com', '100th St # 7-89, Bogota'),
+('Pedro Sanchez', '3187778899', 'pedro.sanchez@email.com', '7th Ave # 150-25, Bogota'),
+('Laura Fernandez', '3112223344', 'laura.fernandez@email.com', '80th St # 10-15, Bogota'),
+('Diego Ramirez', '3163334455', 'diego.ramirez@email.com', 'Boyaca Ave # 65-40, Bogota'),
+('Sofia Herrera', '3146667788', 'sofia.herrera@email.com', '127th St # 15-30, Bogota');
 
--- Pedidos de prueba (algunos con diferentes estados)
--- Pedido 1: Mesa 3, Cliente 1 - ENTREGADO (listo para facturar)
-INSERT INTO pedido (id_mesa, id_cliente, fecha_hora, estado, observaciones, total) VALUES
-(3, 1, '2026-10-19 12:30:00', 'ENTREGADO', 'Sin cebolla en la ensalada', 47000.00),
-(4, 2, '2026-10-19 13:15:00', 'EN_PREPARACION', 'Pechuga bien cocida', 0.00),
-(5, NULL, '2026-10-19 13:45:00', 'PENDIENTE', 'Para llevar', 0.00),
-(6, 3, '2026-10-19 14:00:00', 'LISTO', 'Sin picante', 0.00),
-(8, 4, '2026-10-19 19:30:00', 'PENDIENTE', 'Celebración cumpleaños', 0.00),
-(3, 5, '2026-10-18 20:00:00', 'FACTURADO', '', 89000.00),
-(4, 6, '2026-10-18 21:30:00', 'CANCELADO', 'Cliente se fue', 0.00);
+-- Test orders (various states)
+-- Order 1: Table 3, Customer 1 - DELIVERED (ready for invoicing)
+INSERT INTO order_restaurant (id_table, id_customer, order_datetime, status, notes, total) VALUES
+(3, 1, '2026-10-19 12:30:00', 'DELIVERED', 'No onion in salad', 47000.00),
+(4, 2, '2026-10-19 13:15:00', 'IN_PREPARATION', 'Well done chicken', 0.00),
+(5, NULL, '2026-10-19 13:45:00', 'PENDING', 'Take away', 0.00),
+(6, 3, '2026-10-19 14:00:00', 'READY', 'No spicy', 0.00),
+(8, 4, '2026-10-19 19:30:00', 'PENDING', 'Birthday celebration', 0.00),
+(3, 5, '2026-10-18 20:00:00', 'INVOICED', '', 89000.00),
+(4, 6, '2026-10-18 21:30:00', 'CANCELLED', 'Customer left', 0.00);
 
--- Detalles de pedidos
--- Pedido 1 (id=1): Entrada + Plato fuerte + Bebida
-INSERT INTO detalle_pedido (id_pedido, id_plato, cantidad, precio_unitario) VALUES
-(1, 2, 1, 15000.00),  -- Ensalada César
+-- Order details
+-- Order 1 (id=1): Appetizer + Main + Drink
+INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
+(1, 2, 1, 15000.00),  -- Caesar Salad
 (1, 5, 1, 35000.00),  -- Bandeja Paisa
-(1, 17, 1, 6000.00);  -- Jugo Natural
+(1, 17, 1, 6000.00);  -- Natural Juice
 
--- Pedido 2 (id=2): Plato fuerte + Postre
-INSERT INTO detalle_pedido (id_pedido, id_plato, cantidad, precio_unitario) VALUES
-(2, 6, 1, 22000.00),  -- Pechuga a la Plancha
-(2, 12, 1, 12000.00); -- Tiramisú
+-- Order 2 (id=2): Main + Dessert
+INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
+(2, 6, 1, 22000.00),  -- Grilled Chicken Breast
+(2, 12, 1, 12000.00); -- Tiramisu
 
--- Pedido 3 (id=3): 2 Hamburguesas + 2 Malteadas
-INSERT INTO detalle_pedido (id_pedido, id_plato, cantidad, precio_unitario) VALUES
-(3, 10, 2, 24000.00), -- Hamburguesa Artesanal
-(3, 21, 2, 9000.00);  -- Malteada
+-- Order 3 (id=3): 2 Burgers + 2 Milkshakes
+INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
+(3, 10, 2, 24000.00), -- Artisan Burger
+(3, 21, 2, 9000.00);  -- Milkshake
 
--- Pedido 4 (id=4): Salmón + Copa de Vino
-INSERT INTO detalle_pedido (id_pedido, id_plato, cantidad, precio_unitario) VALUES
-(4, 7, 1, 38000.00),  -- Salmón al Horno
-(4, 27, 1, 15000.00); -- Copa de Vino Tinto
+-- Order 4 (id=4): Salmon + Wine Glass
+INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
+(4, 7, 1, 38000.00),  -- Baked Salmon
+(4, 27, 1, 15000.00); -- Red Wine Glass
 
--- Pedido 5 (id=5): Para grupo - 2 Bandejas + 2 Jugos + 2 Flanes
-INSERT INTO detalle_pedido (id_pedido, id_plato, cantidad, precio_unitario) VALUES
+-- Order 5 (id=5): Group - 2 Bandejas + 2 Juices + 2 Flans
+INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
 (5, 5, 2, 35000.00),  -- Bandeja Paisa x2
-(5, 17, 2, 6000.00),  -- Jugo Natural x2
-(5, 13, 2, 8000.00);  -- Flan de Caramelo x2
+(5, 17, 2, 6000.00),  -- Natural Juice x2
+(5, 13, 2, 8000.00);  -- Caramel Flan x2
 
--- Pedido 6 (id=6): Ya facturado - Lasaña + Café + Tiramisú
-INSERT INTO detalle_pedido (id_pedido, id_plato, cantidad, precio_unitario) VALUES
-(6, 8, 1, 25000.00),  -- Lasaña
-(6, 22, 1, 4500.00),  -- Café con Leche
-(6, 12, 1, 12000.00); -- Tiramisú
+-- Order 6 (id=6): Already invoiced - Lasagna + Coffee + Tiramisu
+INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
+(6, 8, 1, 25000.00),  -- Lasagna
+(6, 22, 1, 4500.00),  -- Coffee with Milk
+(6, 12, 1, 12000.00); -- Tiramisu
 
--- Pedido 7 (id=7): Cancelado - no tiene detalles
+-- Order 7 (id=7): Cancelled - no details
 
--- Facturas
--- Factura para pedido 6 (ya pagada en efectivo)
-INSERT INTO factura (id_pedido, fecha_emision, subtotal, impuestos, total, metodo_pago, estado_pago, numero_factura) VALUES
-(6, '2026-10-18 21:00:00', 41500.00, 7885.00, 49385.00, 'EFECTIVO', 'PAGADO', 'FAC-20261018-001');
+-- Invoices
+-- Invoice for order 6 (already paid in cash)
+INSERT INTO invoice (id_order, issue_date, subtotal, taxes, total, payment_method, payment_status, invoice_number) VALUES
+(6, '2026-10-18 21:00:00', 41500.00, 7885.00, 49385.00, 'CASH', 'PAID', 'INV-20261018-001');
 
--- Factura para pedido 1 (pendiente de pago)
-INSERT INTO factura (id_pedido, fecha_emision, subtotal, impuestos, total, metodo_pago, estado_pago, numero_factura) VALUES
-(1, '2026-10-19 13:45:00', 47000.00, 8930.00, 55930.00, 'TARJETA_DEBITO', 'PENDIENTE', 'FAC-20261019-001');
+-- Invoice for order 1 (pending payment)
+INSERT INTO invoice (id_order, issue_date, subtotal, taxes, total, payment_method, payment_status, invoice_number) VALUES
+(1, '2026-10-19 13:45:00', 47000.00, 8930.00, 55930.00, 'DEBIT_CARD', 'PENDING', 'INV-20261019-001');
 
--- Pagos de factura (para factura 1 - pago parcial con tarjeta)
-INSERT INTO pago_factura (id_factura, monto, metodo_pago, referencia) VALUES
-(2, 30000.00, 'TARJETA_DEBITO', 'AUTH-123456'),
-(2, 25930.00, 'EFECTIVO', 'Pago restante en efectivo');
+-- Invoice payments (for invoice 2 - partial payment with card)
+INSERT INTO invoice_payment (id_invoice, amount, payment_method, reference) VALUES
+(2, 30000.00, 'DEBIT_CARD', 'AUTH-123456'),
+(2, 25930.00, 'CASH', 'Remaining cash payment');
 
--- Actualizar totales de pedidos (los triggers lo harían automáticamente, pero forzamos para seed)
-UPDATE pedido SET total = (
-    SELECT COALESCE(SUM(subtotal), 0) FROM detalle_pedido WHERE id_pedido = pedido.id_pedido
-) WHERE id_pedido IN (1,2,3,4,5,6);
+-- Update order totals (triggers would do this automatically, but forced for seed)
+UPDATE order_restaurant SET total = (
+    SELECT COALESCE(SUM(subtotal), 0) FROM order_detail WHERE id_order = order_restaurant.id_order
+) WHERE id_order IN (1,2,3,4,5,6);
 
 -- =====================================================================
--- CONSULTAS DE VERIFICACIÓN
+-- VERIFICATION QUERIES
 -- =====================================================================
 
--- Verificar estructura
+-- Verify structure
 -- SHOW TABLES;
--- DESCRIBE mesa;
--- DESCRIBE cliente;
--- DESCRIBE plato;
--- DESCRIBE pedido;
--- DESCRIBE detalle_pedido;
--- DESCRIBE factura;
+-- DESCRIBE table_restaurant;
+-- DESCRIBE customer;
+-- DESCRIBE dish;
+-- DESCRIBE order_restaurant;
+-- DESCRIBE order_detail;
+-- DESCRIBE invoice;
 
--- Verificar datos
--- SELECT * FROM v_menu_activo;
--- SELECT * FROM v_mesas_disponibles;
--- SELECT * FROM v_pedidos_cocina;
--- SELECT * FROM v_facturas_pendientes;
--- SELECT * FROM v_ventas_diarias;
+-- Verify data
+-- SELECT * FROM v_active_menu LIMIT 5;
+-- SELECT * FROM v_available_tables;
+-- SELECT * FROM v_kitchen_orders;
+-- SELECT * FROM v_pending_invoices;
+-- SELECT * FROM v_daily_sales;
 
 -- =====================================================================
--- FIN DEL SCRIPT
+-- END OF SCRIPT
 -- =====================================================================
