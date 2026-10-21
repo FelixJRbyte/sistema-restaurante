@@ -2,6 +2,8 @@ package dao;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -14,7 +16,7 @@ public class ConexionDB {
     private static String PASSWORD;
     private static String DRIVER;
 
-    // ThreadLocal para conexiones por hilo (evita problemas con llamadas anidadas)
+    // ThreadLocal physical connection for nested DAO operations and manual transaction control
     private static final ThreadLocal<Connection> threadConnection = new ThreadLocal<>();
 
     static {
@@ -26,43 +28,65 @@ public class ConexionDB {
         try (InputStream is = ConexionDB.class.getClassLoader().getResourceAsStream("db.properties")) {
             if (is != null) {
                 props.load(is);
-                URL = props.getProperty("db.url", "jdbc:mysql://localhost:3306/restaurante_db?useSSL=false&serverTimezone=UTC");
+                URL = props.getProperty("db.url", "jdbc:mysql://localhost:3306/restaurante_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true");
                 USER = props.getProperty("db.user", "root");
                 PASSWORD = props.getProperty("db.password", "");
                 DRIVER = props.getProperty("db.driver", "com.mysql.cj.jdbc.Driver");
             } else {
-                // Valores por defecto si no existe el archivo
-                URL = "jdbc:mysql://localhost:3306/restaurante_db?useSSL=false&serverTimezone=UTC";
-                USER = "root";
-                PASSWORD = "";
-                DRIVER = "com.mysql.cj.jdbc.Driver";
+                setDefaults();
             }
         } catch (IOException e) {
-            System.err.println("Error cargando db.properties, usando valores por defecto: " + e.getMessage());
-            URL = "jdbc:mysql://localhost:3306/restaurante_db?useSSL=false&serverTimezone=UTC";
-            USER = "root";
-            PASSWORD = "";
-            DRIVER = "com.mysql.cj.jdbc.Driver";
+            System.err.println("Error loading db.properties, using default values: " + e.getMessage());
+            setDefaults();
         }
     }
 
-    private ConexionDB() {
-        // Private constructor to prevent instantiation
+    private static void setDefaults() {
+        URL = "jdbc:mysql://localhost:3306/restaurante_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+        USER = "root";
+        PASSWORD = "";
+        DRIVER = "com.mysql.cj.jdbc.Driver";
     }
 
+    private ConexionDB() {
+        // Prevent instantiation
+    }
+
+    /**
+     * Returns a non-closing proxy wrapping the ThreadLocal physical connection so that
+     * try-with-resources blocks in DAOs do not prematurely close the connection during
+     * nested queries (e.g., PedidoDAO -> DetallePedidoDAO) or before rollback().
+     */
     public static Connection getConnection() throws SQLException {
-        Connection conn = threadConnection.get();
-        if (conn == null || conn.isClosed()) {
+        Connection realConn = threadConnection.get();
+        if (realConn == null || realConn.isClosed()) {
             try {
                 Class.forName(DRIVER);
-                conn = DriverManager.getConnection(URL, USER, PASSWORD);
-                conn.setAutoCommit(false); // Manual transaction control
-                threadConnection.set(conn);
+                realConn = DriverManager.getConnection(URL, USER, PASSWORD);
+                realConn.setAutoCommit(false);
+                threadConnection.set(realConn);
             } catch (ClassNotFoundException e) {
                 throw new SQLException("MySQL JDBC Driver not found: " + DRIVER, e);
             }
         }
-        return conn;
+
+        final Connection target = realConn;
+        return (Connection) Proxy.newProxyInstance(
+                Connection.class.getClassLoader(),
+                new Class<?>[]{Connection.class},
+                (proxy, method, args) -> {
+                    if ("close".equals(method.getName())) {
+                        // Do not close physical connection on try-with-resources exit;
+                        // physical lifecycle is managed by closeConnection()
+                        return null;
+                    }
+                    try {
+                        return method.invoke(target, args);
+                    } catch (InvocationTargetException ex) {
+                        throw ex.getTargetException();
+                    }
+                }
+        );
     }
 
     public static void closeConnection() {
@@ -99,8 +123,7 @@ public class ConexionDB {
             }
         }
     }
-    
-    // Método para obtener conexión sin ThreadLocal (para casos especiales)
+
     public static Connection getNewConnection() throws SQLException {
         try {
             Class.forName(DRIVER);

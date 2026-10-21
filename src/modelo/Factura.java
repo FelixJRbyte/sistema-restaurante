@@ -2,7 +2,7 @@ package modelo;
 
 import java.time.LocalDateTime;
 
-public class Factura {
+public class Factura extends EntidadBase {
 
     public enum MetodoPago {
         EFECTIVO,
@@ -36,12 +36,14 @@ public class Factura {
     private String nombreCliente;
 
     public Factura() {
+        super();
         this.fechaEmision = LocalDateTime.now();
         this.estadoPago = EstadoPago.PENDIENTE;
         this.impuestos = 0.0;
     }
 
     public Factura(int idPedido, double subtotal, double impuestos, double total, MetodoPago metodoPago, String numeroFactura) {
+        super();
         this.idPedido = idPedido;
         this.subtotal = subtotal;
         this.impuestos = impuestos;
@@ -53,6 +55,7 @@ public class Factura {
     }
 
     public Factura(int idFactura, int idPedido, LocalDateTime fechaEmision, double subtotal, double impuestos, double total, MetodoPago metodoPago, EstadoPago estadoPago, String numeroFactura, String observaciones) {
+        super();
         this.idFactura = idFactura;
         this.idPedido = idPedido;
         this.fechaEmision = fechaEmision;
@@ -159,6 +162,22 @@ public class Factura {
 
     public void setNombreCliente(String nombreCliente) {
         this.nombreCliente = nombreCliente;
+    }
+
+    @Override
+    public int getId() {
+        return idFactura;
+    }
+
+    @Override
+    public String obtenerResumen() {
+        return String.format("Invoice %s (ID: %d) | Order #%d | Total: $%.2f | Status: %s | Method: %s",
+                numeroFactura, idFactura, idPedido, total, estadoPago, metodoPago);
+    }
+
+    @Override
+    public boolean esValido() {
+        return idPedido > 0 && subtotal >= 0 && impuestos >= 0 && total >= 0 && numeroFactura != null && !numeroFactura.isBlank();
     }
 
     @Override

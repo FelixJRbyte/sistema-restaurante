@@ -1,6 +1,6 @@
 package modelo;
 
-public class Mesa {
+public class Mesa extends EntidadBase {
 
     private int idMesa;
     private int numero;
@@ -9,16 +9,19 @@ public class Mesa {
     private String ubicacion;
 
     public Mesa() {
+        super();
         this.estado = "FREE";
     }
 
     public Mesa(int numero, int capacidad, String estado) {
+        super();
         this.numero = numero;
         this.capacidad = capacidad;
         this.estado = estado;
     }
 
     public Mesa(int idMesa, int numero, int capacidad, String estado, String ubicacion) {
+        super();
         this.idMesa = idMesa;
         this.numero = numero;
         this.capacidad = capacidad;
@@ -64,6 +67,22 @@ public class Mesa {
 
     public void setUbicacion(String ubicacion) {
         this.ubicacion = ubicacion;
+    }
+
+    @Override
+    public int getId() {
+        return idMesa;
+    }
+
+    @Override
+    public String obtenerResumen() {
+        return String.format("Table #%d (ID: %d) | Capacity: %d | Status: %s | Location: %s",
+                numero, idMesa, capacidad, estado, ubicacion != null ? ubicacion : "N/A");
+    }
+
+    @Override
+    public boolean esValido() {
+        return numero > 0 && capacidad > 0 && capacidad <= 20 && estado != null && !estado.isBlank();
     }
 
     @Override

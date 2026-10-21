@@ -40,6 +40,10 @@ public class GestionFacturas {
         return facturaDAO.registrarPago(idFactura, monto, metodoPago, referencia);
     }
 
+    public double obtenerTotalPagado(int idFactura) {
+        return facturaDAO.obtenerTotalPagado(idFactura);
+    }
+
     public boolean anularFactura(int idFactura) {
         return facturaDAO.anularFactura(idFactura);
     }

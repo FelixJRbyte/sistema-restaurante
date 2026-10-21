@@ -233,6 +233,7 @@ erDiagram
 | v_kitchen_orders | Orders in kitchen (PENDING/IN_PREPARATION) with items |
 | v_pending_invoices | Unpaid invoices with table and customer info |
 | v_daily_sales | Daily sales summary by payment method |
+| v_top_dishes | Ranking of best-selling dishes by quantity and revenue |
 
 ## Integrity Triggers
 
@@ -242,7 +243,7 @@ erDiagram
 | trg_order_detail_after_update | UPDATE on order_detail | Recalculate order total |
 | trg_order_detail_after_delete | DELETE on order_detail | Recalculate order total |
 | trg_invoice_after_insert | INSERT on invoice | Change order to INVOICED |
-| trg_invoice_payment_after_insert | INSERT on invoice_payment | Update invoice payment_status |
+| trg_invoice_payment_after_insert | INSERT on invoice_payment | Update invoice payment_status and release table when PAID |
 | trg_order_after_update | UPDATE on order_restaurant | Release table on invoice/pay or cancel |
 
 ## Stored Procedures

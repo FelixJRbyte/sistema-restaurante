@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Pedido {
+public class Pedido extends EntidadBase {
 
     public enum Estado {
         PENDIENTE,
@@ -29,6 +29,7 @@ public class Pedido {
     private String nombreCliente;
 
     public Pedido() {
+        super();
         this.fechaHora = LocalDateTime.now();
         this.estado = Estado.PENDIENTE;
         this.total = 0.0;
@@ -36,6 +37,7 @@ public class Pedido {
     }
 
     public Pedido(int idMesa, int idCliente, String observaciones) {
+        super();
         this.idMesa = idMesa;
         this.idCliente = idCliente;
         this.observaciones = observaciones;
@@ -46,6 +48,7 @@ public class Pedido {
     }
 
     public Pedido(int idPedido, int idMesa, int idCliente, LocalDateTime fechaHora, Estado estado, String observaciones, double total) {
+        super();
         this.idPedido = idPedido;
         this.idMesa = idMesa;
         this.idCliente = idCliente;
@@ -151,6 +154,22 @@ public class Pedido {
 
     public void setNombreCliente(String nombreCliente) {
         this.nombreCliente = nombreCliente;
+    }
+
+    @Override
+    public int getId() {
+        return idPedido;
+    }
+
+    @Override
+    public String obtenerResumen() {
+        return String.format("Order #%d | Table: %s | Status: %s | Items: %d | Total: $%.2f",
+                idPedido, numeroMesa != null ? numeroMesa : idMesa, estado, detalles.size(), total);
+    }
+
+    @Override
+    public boolean esValido() {
+        return idMesa > 0 && estado != null && total >= 0;
     }
 
     @Override

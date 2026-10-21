@@ -21,7 +21,7 @@ public class MesaDAO {
                 return Optional.of(mapResultSetToMesa(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error buscando mesa por ID: " + e.getMessage());
+            System.err.println("Error searching table by ID: " + e.getMessage());
         }
         return Optional.empty();
     }
@@ -38,7 +38,7 @@ public class MesaDAO {
                 return Optional.of(mapResultSetToMesa(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error buscando mesa por número: " + e.getMessage());
+            System.err.println("Error searching table by number: " + e.getMessage());
         }
         return Optional.empty();
     }
@@ -54,7 +54,7 @@ public class MesaDAO {
                 mesas.add(mapResultSetToMesa(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error listando mesas: " + e.getMessage());
+            System.err.println("Error listing tables: " + e.getMessage());
         }
         return mesas;
     }
@@ -72,7 +72,7 @@ public class MesaDAO {
                 mesas.add(mapResultSetToMesa(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error listando mesas disponibles: " + e.getMessage());
+            System.err.println("Error listing available tables: " + e.getMessage());
         }
         return mesas;
     }
@@ -88,7 +88,7 @@ public class MesaDAO {
                 mesas.add(mapResultSetToMesa(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error listando mesas ocupadas: " + e.getMessage());
+            System.err.println("Error listing occupied tables: " + e.getMessage());
         }
         return mesas;
     }
@@ -107,14 +107,14 @@ public class MesaDAO {
             if (filas > 0) {
                 ResultSet keys = stmt.getGeneratedKeys();
                 if (keys.next()) {
-                    // Note: Mesa class doesn't have idMesa field currently
+                    mesa.setIdMesa(keys.getInt(1));
                 }
                 ConexionDB.commit();
                 return true;
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error insertando mesa: " + e.getMessage());
+            System.err.println("Error inserting table: " + e.getMessage());
         }
         return false;
     }
@@ -137,7 +137,7 @@ public class MesaDAO {
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error actualizando mesa: " + e.getMessage());
+            System.err.println("Error updating table: " + e.getMessage());
         }
         return false;
     }
@@ -157,7 +157,7 @@ public class MesaDAO {
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error cambiando estado de mesa: " + e.getMessage());
+            System.err.println("Error changing table status: " + e.getMessage());
         }
         return false;
     }
@@ -176,20 +176,18 @@ public class MesaDAO {
             return true;
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error en SP cambiar estado mesa: " + e.getMessage());
+            System.err.println("Error in SP sp_change_table_status: " + e.getMessage());
         }
         return false;
     }
 
     private Mesa mapResultSetToMesa(ResultSet rs) throws SQLException {
         Mesa mesa = new Mesa();
-        // Note: Mesa class uses numero, capacidad, estado fields
+        mesa.setIdMesa(rs.getInt("id_table"));
         mesa.setNumero(rs.getInt("number"));
         mesa.setCapacidad(rs.getInt("capacity"));
         mesa.setEstado(rs.getString("status"));
         mesa.setUbicacion(rs.getString("location"));
-        // Store id_mesa in a way that works with current class
-        // We could add a field or use a wrapper - for now just map what we have
         return mesa;
     }
 }

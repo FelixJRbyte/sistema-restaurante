@@ -19,15 +19,25 @@ public class GestionClientes {
         return clienteDAO.buscarPorEmail(email);
     }
 
+    public List<Cliente> buscarClientesPorNombre(String termino) {
+        return clienteDAO.buscarPorNombre(termino);
+    }
+
     public List<Cliente> listarTodosLosClientes() {
         return clienteDAO.listarTodos();
     }
 
     public boolean registrarCliente(Cliente cliente) {
+        if (!cliente.esValido()) {
+            return false;
+        }
         return clienteDAO.insertar(cliente);
     }
 
     public boolean actualizarCliente(Cliente cliente) {
+        if (!cliente.esValido()) {
+            return false;
+        }
         return clienteDAO.actualizar(cliente);
     }
 

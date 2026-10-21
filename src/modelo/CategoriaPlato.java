@@ -1,6 +1,6 @@
 package modelo;
 
-public class CategoriaPlato {
+public class CategoriaPlato extends EntidadBase {
 
     private int idCategoria;
     private String nombre;
@@ -8,10 +8,12 @@ public class CategoriaPlato {
     private int orden;
 
     public CategoriaPlato() {
+        super();
         this.orden = 0;
     }
 
     public CategoriaPlato(int idCategoria, String nombre, String descripcion, int orden) {
+        super();
         this.idCategoria = idCategoria;
         this.nombre = nombre;
         this.descripcion = descripcion;
@@ -19,6 +21,7 @@ public class CategoriaPlato {
     }
 
     public CategoriaPlato(String nombre, String descripcion, int orden) {
+        super();
         this.nombre = nombre;
         this.descripcion = descripcion;
         this.orden = orden;
@@ -54,6 +57,21 @@ public class CategoriaPlato {
 
     public void setOrden(int orden) {
         this.orden = orden;
+    }
+
+    @Override
+    public int getId() {
+        return idCategoria;
+    }
+
+    @Override
+    public String obtenerResumen() {
+        return String.format("Category #%d: %s (%s)", idCategoria, nombre, descripcion != null ? descripcion : "");
+    }
+
+    @Override
+    public boolean esValido() {
+        return nombre != null && !nombre.isBlank() && orden >= 0;
     }
 
     @Override

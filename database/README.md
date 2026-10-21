@@ -37,7 +37,7 @@ Get-Content database\restaurante_db.sql | mysql -u root -p
 - ✅ Check Constraints (domain validation)
 - ✅ ENUMs for controlled states
 - ✅ Optimized indexes for typical queries
-- ✅ 5 predefined views for common reports
+- ✅ 6 predefined views for common reports
 
 ### Business Logic (Triggers + SPs)
 - ✅ 6 Triggers for automatic integrity:
@@ -74,7 +74,7 @@ SELECT 'dish_category' t, COUNT(*) c FROM dish_category
 UNION ALL SELECT 'dish', COUNT(*) FROM dish
 UNION ALL SELECT 'table_restaurant', COUNT(*) FROM table_restaurant
 UNION ALL SELECT 'customer', COUNT(*) FROM customer
-UNION ALL SELECT 'order', COUNT(*) FROM `order`
+UNION ALL SELECT 'order_restaurant', COUNT(*) FROM order_restaurant
 UNION ALL SELECT 'order_detail', COUNT(*) FROM order_detail
 UNION ALL SELECT 'invoice', COUNT(*) FROM invoice
 UNION ALL SELECT 'invoice_payment', COUNT(*) FROM invoice_payment;
@@ -85,21 +85,25 @@ SELECT * FROM v_available_tables;
 SELECT * FROM v_kitchen_orders;
 SELECT * FROM v_pending_invoices;
 SELECT * FROM v_daily_sales;
+SELECT * FROM v_top_dishes LIMIT 10;
 ```
 
 ## Java Integration (Phase 3)
 
-The model is designed to map directly to the project's Java classes:
+The model maps directly to the project's Java classes:
 
 | Table | Java Class (src/modelo/) | Current Status |
 |-------|-------------------------|----------------|
+| *(Base Class)* | `EntidadBase.java` | ✅ Complete (Abstract OOP base class) |
 | `table_restaurant` | `Mesa.java` | ✅ Complete |
-| `customer` | `Cliente.java` | ⬜ Empty - complete |
-| `dish` | `Plato.java` | ⬜ Empty - complete |
-| `order` | `Pedido.java` | ⬜ Empty - complete |
-| `invoice` | `Factura.java` | ⬜ Empty - complete |
+| `customer` | `Cliente.java` | ✅ Complete |
+| `dish_category` | `CategoriaPlato.java` | ✅ Complete |
+| `dish` | `Plato.java` | ✅ Complete |
+| `order_restaurant` | `Pedido.java` | ✅ Complete |
+| `order_detail` | `DetallePedido.java` | ✅ Complete |
+| `invoice` | `Factura.java` | ✅ Complete |
 
-**Next step**: Implement empty model classes using this schema as reference, and create DAOs/Repositories that use the Stored Procedures.
+All model classes, DAOs (`src/dao/`), and services (`src/servicios/`) are fully implemented and integrated with the Stored Procedures and Views.
 
 ## Phase 4 Criteria Compliance
 

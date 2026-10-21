@@ -128,14 +128,16 @@ INVOICE_PAYMENT(id_payment, id_invoice, payment_date, amount, payment_method, re
 
 | DB Table | Java Class | Main Attributes |
 |----------|------------|-----------------|
-| TABLE_RESTAURANT | Table | number, capacity, status |
-| CUSTOMER | Customer | name, phone, email, address |
-| DISH | Dish | name, description, price, category |
-| ORDER | Order | table, customer, date, status, items, total |
-| ORDER_DETAIL | (part of Order) | dish, quantity, subtotal |
-| INVOICE | Invoice | order, subtotal, taxes, total, paymentMethod, paymentStatus |
+| *(Abstract Base)* | `EntidadBase` | id, fechaCreacion, obtenerResumen(), esValido() |
+| TABLE_RESTAURANT | `Mesa` | idMesa, numero, capacidad, estado, ubicacion |
+| CUSTOMER | `Cliente` | idCliente, nombre, telefono, email, direccion, activo |
+| DISH_CATEGORY | `CategoriaPlato` | idCategoria, nombre, descripcion, orden |
+| DISH | `Plato` | idPlato, idCategoria, nombre, descripcion, precio, disponible |
+| ORDER_RESTAURANT | `Pedido` | idPedido, idMesa, idCliente, fechaHora, estado, detalles, total |
+| ORDER_DETAIL | `DetallePedido` | idDetalle, idPedido, idPlato, cantidad, precioUnitario, subtotal |
+| INVOICE | `Factura` | idFactura, idPedido, subtotal, impuestos, total, metodoPago, estadoPago |
 
-**Note**: The `Table` class already exists complete in `src/modelo/mesa.java`. Other model classes are empty and must be completed per this model.
+**Note**: All model classes in `src/modelo/` are fully implemented and inherit from `EntidadBase`, applying OOP encapsulation, inheritance, polymorphism, and composition.
 
 ## Data Dictionary
 
@@ -225,7 +227,7 @@ SELECT * FROM v_daily_sales WHERE date = CURDATE();
 ### 6. Customer history
 ```sql
 SELECT o.*, i.invoice_number, i.total, i.payment_status
-FROM `order` o
+FROM order_restaurant o
 LEFT JOIN invoice i ON o.id_order = i.id_order
 WHERE o.id_customer = ?
 ORDER BY o.order_datetime DESC;
@@ -237,6 +239,11 @@ SELECT od.quantity, d.name, od.unit_price, od.subtotal, od.notes
 FROM order_detail od
 JOIN dish d ON od.id_dish = d.id_dish
 WHERE od.id_order = ?;
+```
+
+### 8. Top 10 best-selling dishes
+```sql
+SELECT * FROM v_top_dishes LIMIT 10;
 ```
 
 ## Migration / Versioning Strategy

@@ -2,7 +2,7 @@ package modelo;
 
 import java.time.LocalDateTime;
 
-public class Cliente {
+public class Cliente extends EntidadBase {
 
     private int idCliente;
     private String nombre;
@@ -13,11 +13,13 @@ public class Cliente {
     private boolean activo;
 
     public Cliente() {
+        super();
         this.activo = true;
         this.fechaRegistro = LocalDateTime.now();
     }
 
     public Cliente(int idCliente, String nombre, String telefono, String email, String direccion) {
+        super();
         this.idCliente = idCliente;
         this.nombre = nombre;
         this.telefono = telefono;
@@ -28,6 +30,7 @@ public class Cliente {
     }
 
     public Cliente(String nombre, String telefono, String email, String direccion) {
+        super();
         this.nombre = nombre;
         this.telefono = telefono;
         this.email = email;
@@ -90,6 +93,22 @@ public class Cliente {
 
     public void setActivo(boolean activo) {
         this.activo = activo;
+    }
+
+    @Override
+    public int getId() {
+        return idCliente;
+    }
+
+    @Override
+    public String obtenerResumen() {
+        return String.format("Customer #%d: %s | Phone: %s | Email: %s",
+                idCliente, nombre, telefono != null ? telefono : "N/A", email != null ? email : "N/A");
+    }
+
+    @Override
+    public boolean esValido() {
+        return nombre != null && !nombre.isBlank();
     }
 
     @Override

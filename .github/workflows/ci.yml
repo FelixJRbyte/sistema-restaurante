@@ -55,8 +55,5 @@ jobs:
           db.driver=com.mysql.cj.jdbc.Driver
           EOF
       
-      - name: Compile with Maven
-        run: mvn clean compile -q
-      
-      - name: Run Tests (placeholder)
-        run: echo "No unit tests yet - add JUnit tests"
+      - name: Compile and Run Automated JUnit Tests
+        run: mvn clean test -B

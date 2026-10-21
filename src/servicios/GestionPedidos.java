@@ -3,7 +3,6 @@ package servicios;
 import dao.ConexionDB;
 import dao.FacturaDAO;
 import dao.PedidoDAO;
-import modelo.DetallePedido;
 import modelo.Factura;
 import modelo.Pedido;
 
@@ -43,6 +42,10 @@ public class GestionPedidos {
         return pedidoDAO.agregarPlatoAPedido(idPedido, idPlato, cantidad);
     }
 
+    public boolean eliminarPlatoDePedido(int idPedido, int idPlato) {
+        return pedidoDAO.eliminarPlatoDePedido(idPedido, idPlato);
+    }
+
     public boolean actualizarEstadoPedido(int idPedido, Pedido.Estado nuevoEstado) {
         return pedidoDAO.actualizarEstado(idPedido, nuevoEstado);
     }
@@ -51,7 +54,7 @@ public class GestionPedidos {
         return pedidoDAO.cancelarPedido(idPedido);
     }
 
-    // Factura operations
+    // Invoice operations
     public Optional<Integer> generarFactura(int idPedido, Factura.MetodoPago metodoPago, String numeroFactura) {
         return facturaDAO.generarFactura(idPedido, metodoPago, numeroFactura);
     }

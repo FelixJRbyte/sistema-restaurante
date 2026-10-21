@@ -218,6 +218,19 @@ WHERE payment_status = 'PAID'
 GROUP BY DATE(issue_date)
 ORDER BY date DESC;
 
+-- View: Top selling dishes (RF-010 / HU-14)
+CREATE VIEW v_top_dishes AS
+SELECT d.id_dish, d.name, d.id_category, c.name AS category_name, d.price,
+       COALESCE(SUM(od.quantity), 0) AS total_sold,
+       COALESCE(SUM(od.subtotal), 0.00) AS total_revenue
+FROM dish d
+JOIN dish_category c ON d.id_category = c.id_category
+JOIN order_detail od ON d.id_dish = od.id_dish
+JOIN order_restaurant o ON od.id_order = o.id_order
+WHERE o.status != 'CANCELLED'
+GROUP BY d.id_dish, d.name, d.id_category, c.name, d.price
+ORDER BY total_sold DESC, total_revenue DESC;
+
 -- =====================================================================
 -- TRIGGERS FOR CONSISTENCY
 -- =====================================================================
@@ -287,6 +300,14 @@ BEGIN
     
     IF total_paid >= total_invoice THEN
         UPDATE invoice SET payment_status = 'PAID' WHERE id_invoice = NEW.id_invoice;
+        UPDATE table_restaurant
+        SET status = 'FREE'
+        WHERE id_table = (
+            SELECT o.id_table
+            FROM order_restaurant o
+            JOIN invoice i ON i.id_order = o.id_order
+            WHERE i.id_invoice = NEW.id_invoice
+        );
     ELSEIF total_paid > 0 THEN
         UPDATE invoice SET payment_status = 'PARTIAL' WHERE id_invoice = NEW.id_invoice;
     END IF;

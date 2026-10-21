@@ -26,9 +26,33 @@ public class PlatoDAO {
                 return Optional.of(mapResultSetToPlato(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error buscando plato por ID: " + e.getMessage());
+            System.err.println("Error searching dish by ID: " + e.getMessage());
         }
         return Optional.empty();
+    }
+
+    public List<Plato> buscarPorNombre(String termino) {
+        List<Plato> platos = new ArrayList<>();
+        String sql = """
+            SELECT p.*, c.name AS category_name
+            FROM dish p
+            LEFT JOIN dish_category c ON p.id_category = c.id_category
+            WHERE p.name LIKE ?
+            ORDER BY p.name
+            """;
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, "%" + termino + "%");
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                platos.add(mapResultSetToPlato(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error searching dishes by name: " + e.getMessage());
+        }
+        return platos;
     }
 
     public List<Plato> listarPorCategoria(int idCategoria) {
@@ -50,7 +74,7 @@ public class PlatoDAO {
                 platos.add(mapResultSetToPlato(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error listando platos por categoría: " + e.getMessage());
+            System.err.println("Error listing dishes by category: " + e.getMessage());
         }
         return platos;
     }
@@ -72,7 +96,7 @@ public class PlatoDAO {
                 platos.add(mapResultSetToPlato(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error listando platos disponibles: " + e.getMessage());
+            System.err.println("Error listing available dishes: " + e.getMessage());
         }
         return platos;
     }
@@ -93,7 +117,33 @@ public class PlatoDAO {
                 platos.add(mapResultSetToPlato(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error listando todos los platos: " + e.getMessage());
+            System.err.println("Error listing all dishes: " + e.getMessage());
+        }
+        return platos;
+    }
+
+    public List<Plato> listarMasVendidos(int limite) {
+        List<Plato> platos = new ArrayList<>();
+        String sql = "SELECT * FROM v_top_dishes LIMIT ?";
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, limite);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                Plato plato = new Plato();
+                plato.setIdPlato(rs.getInt("id_dish"));
+                plato.setNombre(rs.getString("name"));
+                plato.setIdCategoria(rs.getInt("id_category"));
+                plato.setNombreCategoria(rs.getString("category_name"));
+                plato.setPrecio(rs.getDouble("price"));
+                plato.setCantidadVendida(rs.getInt("total_sold"));
+                plato.setIngresosGenerados(rs.getDouble("total_revenue"));
+                platos.add(plato);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error listing top selling dishes: " + e.getMessage());
         }
         return platos;
     }
@@ -121,7 +171,7 @@ public class PlatoDAO {
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error insertando plato: " + e.getMessage());
+            System.err.println("Error inserting dish: " + e.getMessage());
         }
         return false;
     }
@@ -146,7 +196,7 @@ public class PlatoDAO {
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error actualizando plato: " + e.getMessage());
+            System.err.println("Error updating dish: " + e.getMessage());
         }
         return false;
     }
@@ -166,7 +216,7 @@ public class PlatoDAO {
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error cambiando disponibilidad: " + e.getMessage());
+            System.err.println("Error changing dish availability: " + e.getMessage());
         }
         return false;
     }

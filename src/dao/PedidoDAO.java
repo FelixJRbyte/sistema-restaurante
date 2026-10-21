@@ -1,10 +1,8 @@
 package dao;
 
-import modelo.DetallePedido;
 import modelo.Pedido;
 
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +11,7 @@ public class PedidoDAO {
 
     private final DetallePedidoDAO detalleDAO = new DetallePedidoDAO();
 
-    // Mapeo entre enums Java (español) y BD (inglés)
+    // Mapping between Java enums (Spanish) and DB ENUMs (English)
     private static String estadoToDb(Pedido.Estado estado) {
         return switch (estado) {
             case PENDIENTE -> "PENDING";
@@ -57,7 +55,7 @@ public class PedidoDAO {
                 return Optional.of(pedido);
             }
         } catch (SQLException e) {
-            System.err.println("Error buscando pedido por ID: " + e.getMessage());
+            System.err.println("Error searching order by ID: " + e.getMessage());
         }
         return Optional.empty();
     }
@@ -84,7 +82,7 @@ public class PedidoDAO {
                 pedidos.add(pedido);
             }
         } catch (SQLException e) {
-            System.err.println("Error listando pedidos por mesa: " + e.getMessage());
+            System.err.println("Error listing orders by table: " + e.getMessage());
         }
         return pedidos;
     }
@@ -111,7 +109,7 @@ public class PedidoDAO {
                 pedidos.add(pedido);
             }
         } catch (SQLException e) {
-            System.err.println("Error listando pedidos por cliente: " + e.getMessage());
+            System.err.println("Error listing orders by customer: " + e.getMessage());
         }
         return pedidos;
     }
@@ -138,13 +136,12 @@ public class PedidoDAO {
                 pedidos.add(pedido);
             }
         } catch (SQLException e) {
-            System.err.println("Error listando pedidos por estado: " + e.getMessage());
+            System.err.println("Error listing orders by status: " + e.getMessage());
         }
         return pedidos;
     }
 
     public List<Pedido> listarPedidosCocina() {
-        // Uses the view v_kitchen_orders (already uses correct table name)
         List<Pedido> pedidos = new ArrayList<>();
         String sql = "SELECT * FROM v_kitchen_orders";
         try (Connection conn = ConexionDB.getConnection();
@@ -164,12 +161,11 @@ public class PedidoDAO {
                 pedidos.add(pedido);
             }
         } catch (SQLException e) {
-            System.err.println("Error listando pedidos de cocina: " + e.getMessage());
+            System.err.println("Error listing kitchen orders: " + e.getMessage());
         }
         return pedidos;
     }
 
-    // Create order using stored procedure
     public Optional<Integer> crearPedido(int idMesa, int idCliente, String observaciones) {
         String sql = "{CALL sp_create_order(?, ?, ?)}";
         try (Connection conn = ConexionDB.getConnection();
@@ -195,12 +191,11 @@ public class PedidoDAO {
             ConexionDB.commit();
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error creando pedido (SP): " + e.getMessage());
+            System.err.println("Error creating order (SP): " + e.getMessage());
         }
         return Optional.empty();
     }
 
-    // Add dish to order using stored procedure
     public boolean agregarPlatoAPedido(int idPedido, int idPlato, int cantidad) {
         String sql = "{CALL sp_add_dish_to_order(?, ?, ?)}";
         try (Connection conn = ConexionDB.getConnection();
@@ -215,7 +210,27 @@ public class PedidoDAO {
             return true;
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error agregando plato a pedido (SP): " + e.getMessage());
+            System.err.println("Error adding dish to order (SP): " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean eliminarPlatoDePedido(int idPedido, int idPlato) {
+        String sql = "DELETE FROM order_detail WHERE id_order = ? AND id_dish = ?";
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idPedido);
+            stmt.setInt(2, idPlato);
+
+            int filas = stmt.executeUpdate();
+            if (filas > 0) {
+                ConexionDB.commit();
+                return true;
+            }
+        } catch (SQLException e) {
+            ConexionDB.rollback();
+            System.err.println("Error removing dish from order: " + e.getMessage());
         }
         return false;
     }
@@ -235,7 +250,7 @@ public class PedidoDAO {
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error actualizando estado de pedido: " + e.getMessage());
+            System.err.println("Error updating order status: " + e.getMessage());
         }
         return false;
     }

@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public class FacturaDAO {
 
-    // Mapeo entre enums Java (español) y BD (inglés)
+    // Mapping between Java enums (Spanish) and DB ENUMs (English)
     private static String metodoPagoToDb(Factura.MetodoPago metodo) {
         return switch (metodo) {
             case EFECTIVO -> "CASH";
@@ -72,7 +72,7 @@ public class FacturaDAO {
                 return Optional.of(mapResultSetToFactura(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error buscando factura por ID: " + e.getMessage());
+            System.err.println("Error searching invoice by ID: " + e.getMessage());
         }
         return Optional.empty();
     }
@@ -96,7 +96,7 @@ public class FacturaDAO {
                 return Optional.of(mapResultSetToFactura(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error buscando factura por pedido: " + e.getMessage());
+            System.err.println("Error searching invoice by order: " + e.getMessage());
         }
         return Optional.empty();
     }
@@ -120,7 +120,7 @@ public class FacturaDAO {
                 return Optional.of(mapResultSetToFactura(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error buscando factura por número: " + e.getMessage());
+            System.err.println("Error searching invoice by number: " + e.getMessage());
         }
         return Optional.empty();
     }
@@ -146,13 +146,12 @@ public class FacturaDAO {
                 facturas.add(mapResultSetToFactura(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error listando facturas por estado: " + e.getMessage());
+            System.err.println("Error listing invoices by status: " + e.getMessage());
         }
         return facturas;
     }
 
     public List<Factura> listarPendientes() {
-        // Uses the view v_pending_invoices
         List<Factura> facturas = new ArrayList<>();
         String sql = "SELECT * FROM v_pending_invoices";
         try (Connection conn = ConexionDB.getConnection();
@@ -172,13 +171,12 @@ public class FacturaDAO {
                 facturas.add(factura);
             }
         } catch (SQLException e) {
-            System.err.println("Error listando facturas pendientes: " + e.getMessage());
+            System.err.println("Error listing pending invoices: " + e.getMessage());
         }
         return facturas;
     }
 
     public List<Factura> listarVentasDiarias(LocalDateTime fecha) {
-        // Uses the view v_daily_sales - returns aggregated daily sales
         List<Factura> facturas = new ArrayList<>();
         String sql = "SELECT * FROM v_daily_sales WHERE date = ?";
         try (Connection conn = ConexionDB.getConnection();
@@ -188,20 +186,41 @@ public class FacturaDAO {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                // Create a summary factura for reporting
                 Factura f = new Factura();
                 f.setFechaEmision(fecha);
                 f.setTotal(rs.getDouble("total_sales"));
-                f.setObservaciones("Daily sales: " + rs.getInt("total_invoices") + " invoices");
+                f.setObservaciones(String.format(
+                        "Invoices: %d | Cash: $%.2f | Card: $%.2f | Transfer: $%.2f | QR: $%.2f",
+                        rs.getInt("total_invoices"),
+                        rs.getDouble("cash_sales"),
+                        rs.getDouble("card_sales"),
+                        rs.getDouble("transfer_sales"),
+                        rs.getDouble("qr_sales")
+                ));
                 facturas.add(f);
             }
         } catch (SQLException e) {
-            System.err.println("Error listando ventas diarias: " + e.getMessage());
+            System.err.println("Error listing daily sales: " + e.getMessage());
         }
         return facturas;
     }
 
-    // Generate invoice using stored procedure
+    public double obtenerTotalPagado(int idFactura) {
+        String sql = "SELECT COALESCE(SUM(amount), 0.00) AS total_paid FROM invoice_payment WHERE id_invoice = ?";
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idFactura);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDouble("total_paid");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting paid amount for invoice: " + e.getMessage());
+        }
+        return 0.0;
+    }
+
     public Optional<Integer> generarFactura(int idPedido, Factura.MetodoPago metodoPago, String numeroFactura) {
         String sql = "{CALL sp_generate_invoice(?, ?, ?)}";
         try (Connection conn = ConexionDB.getConnection();
@@ -223,12 +242,11 @@ public class FacturaDAO {
             ConexionDB.commit();
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error generando factura (SP): " + e.getMessage());
+            System.err.println("Error generating invoice (SP): " + e.getMessage());
         }
         return Optional.empty();
     }
 
-    // Register payment using stored procedure
     public boolean registrarPago(int idFactura, double monto, Factura.MetodoPago metodoPago, String referencia) {
         String sql = "{CALL sp_register_payment(?, ?, ?, ?)}";
         try (Connection conn = ConexionDB.getConnection();
@@ -244,7 +262,7 @@ public class FacturaDAO {
             return true;
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error registrando pago (SP): " + e.getMessage());
+            System.err.println("Error registering payment (SP): " + e.getMessage());
         }
         return false;
     }
@@ -262,7 +280,7 @@ public class FacturaDAO {
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error anulando factura: " + e.getMessage());
+            System.err.println("Error voiding invoice: " + e.getMessage());
         }
         return false;
     }

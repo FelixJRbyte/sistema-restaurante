@@ -1,0 +1,10 @@
+# Database Configuration Template
+# Copy this file to src/main/resources/db.properties and adjust credentials
+db.url=jdbc:mysql://localhost:3306/restaurante_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+db.user=root
+db.password=
+db.driver=com.mysql.cj.jdbc.Driver
+
+# Connection pool settings
+db.pool.maxSize=10
+db.pool.minIdle=2

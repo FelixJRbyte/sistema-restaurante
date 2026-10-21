@@ -1,6 +1,6 @@
 package modelo;
 
-public class DetallePedido {
+public class DetallePedido extends EntidadBase {
 
     private int idDetalle;
     private int idPedido;
@@ -13,10 +13,12 @@ public class DetallePedido {
     private String nombrePlato;
 
     public DetallePedido() {
+        super();
         this.cantidad = 1;
     }
 
     public DetallePedido(int idDetalle, int idPedido, int idPlato, int cantidad, double precioUnitario, String observaciones) {
+        super();
         this.idDetalle = idDetalle;
         this.idPedido = idPedido;
         this.idPlato = idPlato;
@@ -26,6 +28,7 @@ public class DetallePedido {
     }
 
     public DetallePedido(int idPedido, int idPlato, int cantidad, double precioUnitario) {
+        super();
         this.idPedido = idPedido;
         this.idPlato = idPlato;
         this.cantidad = cantidad;
@@ -90,6 +93,22 @@ public class DetallePedido {
 
     public void setNombrePlato(String nombrePlato) {
         this.nombrePlato = nombrePlato;
+    }
+
+    @Override
+    public int getId() {
+        return idDetalle;
+    }
+
+    @Override
+    public String obtenerResumen() {
+        return String.format("%dx %s ($%.2f each = $%.2f)",
+                cantidad, nombrePlato != null ? nombrePlato : "Dish #" + idPlato, precioUnitario, getSubtotal());
+    }
+
+    @Override
+    public boolean esValido() {
+        return idPlato > 0 && cantidad > 0 && precioUnitario >= 0;
     }
 
     @Override

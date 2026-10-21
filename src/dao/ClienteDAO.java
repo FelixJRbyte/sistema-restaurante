@@ -21,7 +21,7 @@ public class ClienteDAO {
                 return Optional.of(mapResultSetToCliente(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error buscando cliente por ID: " + e.getMessage());
+            System.err.println("Error searching customer by ID: " + e.getMessage());
         }
         return Optional.empty();
     }
@@ -38,9 +38,27 @@ public class ClienteDAO {
                 return Optional.of(mapResultSetToCliente(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error buscando cliente por email: " + e.getMessage());
+            System.err.println("Error searching customer by email: " + e.getMessage());
         }
         return Optional.empty();
+    }
+
+    public List<Cliente> buscarPorNombre(String termino) {
+        List<Cliente> clientes = new ArrayList<>();
+        String sql = "SELECT * FROM customer WHERE active = TRUE AND name LIKE ? ORDER BY name";
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, "%" + termino + "%");
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                clientes.add(mapResultSetToCliente(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error searching customers by name: " + e.getMessage());
+        }
+        return clientes;
     }
 
     public List<Cliente> listarTodos() {
@@ -54,7 +72,7 @@ public class ClienteDAO {
                 clientes.add(mapResultSetToCliente(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error listando clientes: " + e.getMessage());
+            System.err.println("Error listing customers: " + e.getMessage());
         }
         return clientes;
     }
@@ -80,7 +98,7 @@ public class ClienteDAO {
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error insertando cliente: " + e.getMessage());
+            System.err.println("Error inserting customer: " + e.getMessage());
         }
         return false;
     }
@@ -104,7 +122,7 @@ public class ClienteDAO {
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error actualizando cliente: " + e.getMessage());
+            System.err.println("Error updating customer: " + e.getMessage());
         }
         return false;
     }
@@ -123,7 +141,7 @@ public class ClienteDAO {
             }
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error eliminando cliente: " + e.getMessage());
+            System.err.println("Error deleting customer: " + e.getMessage());
         }
         return false;
     }
