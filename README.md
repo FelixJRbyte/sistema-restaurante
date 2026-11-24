@@ -1,6 +1,6 @@
 # Restaurant Management System (Group 04)
 
-Complete restaurant management system developed in **Java 17** with **MySQL 8.0**, implementing a layered architecture (**Model, DAO, Services, Interactive Console**) with full OOP principles (**Encapsulation, Inheritance, Polymorphism, Composition/Aggregation**), database triggers, views, and stored procedures.
+Complete restaurant management system developed in **Java 25** with **MySQL 8.0**, implementing a layered architecture (**Model, DAO, Services, Interactive Console**) with full OOP principles (**Encapsulation, Inheritance, Polymorphism, Composition/Aggregation**), database triggers, views, and stored procedures.
 
 ---
 
@@ -38,7 +38,7 @@ Complete restaurant management system developed in **Java 17** with **MySQL 8.0*
 ├── test/
 │   └── SistemaRestauranteTest.java # Automated JUnit 5 Tests (OOP, Polymorphism, Composition & Validation)
 ├── .github/workflows/
-│   └── ci.yml                      # GitHub Actions CI Pipeline (MySQL 8.0 + JDK 17 + Maven Test)
+│   └── ci.yml                      # GitHub Actions CI Pipeline (MySQL 8.0 + JDK 25 + Maven Test)
 └── pom.xml                         # Maven Build Configuration
 ```
 
@@ -69,7 +69,7 @@ Complete restaurant management system developed in **Java 17** with **MySQL 8.0*
 ## 🚀 Installation & Execution
 
 ### Prerequisites
-- **Java JDK 17+**
+- **Java JDK 25 LTS**
 - **MySQL 8.0+**
 - **Maven 3.8+** (optional, for automated build and tests)
 
@@ -99,8 +99,10 @@ mvn compile exec:java -Dexec.mainClass=Main
 
 **Option B: Using `javac` / `java`**
 ```bash
+# Copy runtime dependencies (MySQL driver) into target/lib first, or point to your mysql-connector-j JAR
+mvn dependency:copy-dependencies -DoutputDirectory=target/lib
 javac -encoding UTF-8 -d out src/modelo/*.java src/dao/*.java src/servicios/*.java src/Main.java
-java -cp "out;out/lib/*" Main
+java -cp "out;target/lib/*" Main
 ```
 
 ---

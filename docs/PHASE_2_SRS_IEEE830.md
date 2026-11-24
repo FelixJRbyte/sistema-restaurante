@@ -68,7 +68,7 @@ The system provides a complete layered Java application backed by a 3NF MySQL re
 
 ### 3.4 Technical Constraints (RC)
 
-- **RC-001 Language & Build**: Java 17 (`maven-compiler-plugin` target 17) with Maven (`pom.xml`).
+- **RC-001 Language & Build**: Java 25 LTS (`maven-compiler-plugin` release 25) with Maven (`pom.xml`).
 - **RC-002 Database Engine**: MySQL 8.0+ using InnoDB, `utf8mb4`, triggers, views, and stored procedures.
 - **RC-003 Architecture**: Layered OOP architecture (`modelo`, `dao`, `servicios`, `Main`) using JDBC (`mysql-connector-j`).
 - **RC-004 Continuous Integration**: Automated verification via GitHub Actions (`.github/workflows/ci.yml`).
