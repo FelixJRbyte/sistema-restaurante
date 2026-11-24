@@ -252,16 +252,17 @@ erDiagram
 |----|---------|
 | sp_create_order | Create order validating free table |
 | sp_add_dish_to_order | Add item validating state and availability |
+| sp_update_order_status | Enforce valid order lifecycle transitions |
 | sp_generate_invoice | Generate invoice with 19% VAT |
-| sp_register_payment | Register payment (supports partial/mixed) |
-| sp_change_table_status | Change status validating business rules |
+| sp_register_payment | Register payment (validates VOIDED & remaining balance) |
+| sp_change_table_status | Change status validating active orders & unpaid invoices |
 
 ## Included Seed Data
 
 - 6 menu categories
-- 28 varied dishes
+- 27 varied dishes
 - 12 tables (different capacities and locations)
 - 8 test customers
 - 7 orders in various states
-- 2 invoices (one paid, one pending)
-- 2 payments (partial for pending invoice)
+- 2 invoices (one paid, one partially paid)
+- 2 payments (full cash payment for invoice 1, partial card payment for invoice 2)

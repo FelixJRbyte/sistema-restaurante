@@ -22,7 +22,7 @@ CREATE TABLE customer (
     active            BOOLEAN DEFAULT TRUE,
     
     CONSTRAINT uk_customer_email UNIQUE (email),
-    CONSTRAINT chk_customer_phone CHECK (phone IS NULL OR phone REGEXP '^[0-9+\-\s()]{7,20}$')
+    CONSTRAINT chk_customer_phone CHECK (phone IS NULL OR phone REGEXP '^[0-9+()\\s-]{7,20}$')
 ) ENGINE=InnoDB COMMENT='Restaurant customers';
 
 -- =====================================================================
@@ -184,13 +184,13 @@ ORDER BY c.display_order, d.name;
 CREATE VIEW v_kitchen_orders AS
 SELECT o.id_order, o.id_table, t.number AS table_number, o.order_datetime,
        o.status, o.notes,
-       GROUP_CONCAT(CONCAT(od.quantity, 'x ', d.name) SEPARATOR ', ') AS items
+       COALESCE(GROUP_CONCAT(CONCAT(od.quantity, 'x ', d.name) SEPARATOR ', '), 'No items yet') AS items
 FROM order_restaurant o
 JOIN table_restaurant t ON o.id_table = t.id_table
-JOIN order_detail od ON o.id_order = od.id_order
-JOIN dish d ON od.id_dish = d.id_dish
+LEFT JOIN order_detail od ON o.id_order = od.id_order
+LEFT JOIN dish d ON od.id_dish = d.id_dish
 WHERE o.status IN ('PENDING', 'IN_PREPARATION')
-GROUP BY o.id_order
+GROUP BY o.id_order, o.id_table, t.number, o.order_datetime, o.status, o.notes
 ORDER BY o.order_datetime;
 
 -- View: Pending invoices
@@ -262,6 +262,16 @@ BEGIN
         WHERE id_order = NEW.id_order
     )
     WHERE id_order = NEW.id_order;
+
+    IF OLD.id_order != NEW.id_order THEN
+        UPDATE order_restaurant
+        SET total = (
+            SELECT COALESCE(SUM(subtotal), 0)
+            FROM order_detail
+            WHERE id_order = OLD.id_order
+        )
+        WHERE id_order = OLD.id_order;
+    END IF;
 END//
 
 CREATE TRIGGER trg_order_detail_after_delete
@@ -294,42 +304,64 @@ FOR EACH ROW
 BEGIN
     DECLARE total_paid DECIMAL(10,2);
     DECLARE total_invoice DECIMAL(10,2);
-    
-    SELECT SUM(amount) INTO total_paid FROM invoice_payment WHERE id_invoice = NEW.id_invoice;
-    SELECT total INTO total_invoice FROM invoice WHERE id_invoice = NEW.id_invoice;
-    
-    IF total_paid >= total_invoice THEN
-        UPDATE invoice SET payment_status = 'PAID' WHERE id_invoice = NEW.id_invoice;
-        UPDATE table_restaurant
-        SET status = 'FREE'
-        WHERE id_table = (
-            SELECT o.id_table
-            FROM order_restaurant o
-            JOIN invoice i ON i.id_order = o.id_order
-            WHERE i.id_invoice = NEW.id_invoice
-        );
-    ELSEIF total_paid > 0 THEN
-        UPDATE invoice SET payment_status = 'PARTIAL' WHERE id_invoice = NEW.id_invoice;
+    DECLARE current_status VARCHAR(20);
+    DECLARE v_id_table INT;
+
+    SELECT COALESCE(SUM(amount), 0) INTO total_paid FROM invoice_payment WHERE id_invoice = NEW.id_invoice;
+    SELECT i.total, i.payment_status, o.id_table
+    INTO total_invoice, current_status, v_id_table
+    FROM invoice i
+    JOIN order_restaurant o ON o.id_order = i.id_order
+    WHERE i.id_invoice = NEW.id_invoice;
+
+    IF current_status != 'VOIDED' THEN
+        IF total_paid >= total_invoice THEN
+            UPDATE invoice SET payment_status = 'PAID' WHERE id_invoice = NEW.id_invoice;
+            IF NOT EXISTS (
+                SELECT 1 FROM order_restaurant o
+                LEFT JOIN invoice i ON i.id_order = o.id_order
+                WHERE o.id_table = v_id_table
+                  AND (o.status NOT IN ('INVOICED', 'CANCELLED')
+                       OR i.payment_status IN ('PENDING', 'PARTIAL'))
+            ) THEN
+                UPDATE table_restaurant SET status = 'FREE' WHERE id_table = v_id_table;
+            END IF;
+        ELSEIF total_paid > 0 THEN
+            UPDATE invoice SET payment_status = 'PARTIAL' WHERE id_invoice = NEW.id_invoice;
+        END IF;
     END IF;
 END//
 
--- Trigger: On table release (invoiced and paid order), change table status to FREE
+-- Trigger: On table release (invoiced and paid order, or cancelled), change table status to FREE
 CREATE TRIGGER trg_order_after_update
 AFTER UPDATE ON order_restaurant
 FOR EACH ROW
 BEGIN
     IF NEW.status = 'INVOICED' AND OLD.status != 'INVOICED' THEN
-        -- Check if invoice is paid
         IF EXISTS (
             SELECT 1 FROM invoice i
             WHERE i.id_order = NEW.id_order AND i.payment_status = 'PAID'
+        ) AND NOT EXISTS (
+            SELECT 1 FROM order_restaurant o
+            LEFT JOIN invoice i ON i.id_order = o.id_order
+            WHERE o.id_table = NEW.id_table
+              AND o.id_order != NEW.id_order
+              AND (o.status NOT IN ('INVOICED', 'CANCELLED')
+                   OR i.payment_status IN ('PENDING', 'PARTIAL'))
         ) THEN
             UPDATE table_restaurant SET status = 'FREE' WHERE id_table = NEW.id_table;
         END IF;
     ELSEIF NEW.status = 'CANCELLED' AND OLD.status != 'CANCELLED' THEN
-        UPDATE table_restaurant SET status = 'FREE' WHERE id_table = NEW.id_table;
-    ELSEIF NEW.status IN ('PENDING', 'IN_PREPARATION', 'READY', 'DELIVERED') AND OLD.status = 'FREE' THEN
-        UPDATE table_restaurant SET status = 'OCCUPIED' WHERE id_table = NEW.id_table;
+        IF NOT EXISTS (
+            SELECT 1 FROM order_restaurant o
+            LEFT JOIN invoice i ON i.id_order = o.id_order
+            WHERE o.id_table = NEW.id_table
+              AND o.id_order != NEW.id_order
+              AND (o.status NOT IN ('INVOICED', 'CANCELLED')
+                   OR i.payment_status IN ('PENDING', 'PARTIAL'))
+        ) THEN
+            UPDATE table_restaurant SET status = 'FREE' WHERE id_table = NEW.id_table;
+        END IF;
     END IF;
 END//
 
@@ -349,18 +381,22 @@ CREATE PROCEDURE sp_create_order(
 )
 BEGIN
     DECLARE v_table_status VARCHAR(20);
-    
+
     SELECT status INTO v_table_status FROM table_restaurant WHERE id_table = p_id_table;
-    
+
+    IF v_table_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table not found';
+    END IF;
+
     IF v_table_status != 'FREE' THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table is not available';
     END IF;
-    
+
     INSERT INTO order_restaurant (id_table, id_customer, notes, status)
     VALUES (p_id_table, p_id_customer, p_notes, 'PENDING');
-    
+
     UPDATE table_restaurant SET status = 'OCCUPIED' WHERE id_table = p_id_table;
-    
+
     SELECT LAST_INSERT_ID() AS id_order;
 END//
 
@@ -374,26 +410,72 @@ BEGIN
     DECLARE v_price DECIMAL(10,2);
     DECLARE v_order_status VARCHAR(20);
     DECLARE v_dish_available BOOLEAN;
-    
+
     SELECT status INTO v_order_status FROM order_restaurant WHERE id_order = p_id_order;
     SELECT available, price INTO v_dish_available, v_price FROM dish WHERE id_dish = p_id_dish;
-    
+
+    IF v_order_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Order not found';
+    END IF;
+
+    IF v_dish_available IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Dish not found';
+    END IF;
+
+    IF p_quantity IS NULL OR p_quantity <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Quantity must be greater than zero';
+    END IF;
+
     IF v_order_status NOT IN ('PENDING', 'IN_PREPARATION') THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cannot modify order in this state';
     END IF;
-    
+
     IF NOT v_dish_available THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Dish is not available';
     END IF;
-    
+
     INSERT INTO order_detail (id_order, id_dish, quantity, unit_price)
     VALUES (p_id_order, p_id_dish, p_quantity, v_price)
-    ON DUPLICATE KEY UPDATE 
+    ON DUPLICATE KEY UPDATE
         quantity = quantity + p_quantity,
         unit_price = v_price;
-    
-    UPDATE order_restaurant SET status = 'IN_PREPARATION' 
+
+    UPDATE order_restaurant SET status = 'IN_PREPARATION'
     WHERE id_order = p_id_order AND status = 'PENDING';
+END//
+
+-- SP: Update order status enforcing valid lifecycle transitions
+CREATE PROCEDURE sp_update_order_status(
+    IN p_id_order INT,
+    IN p_new_status VARCHAR(20)
+)
+BEGIN
+    DECLARE v_current_status VARCHAR(20);
+
+    SELECT status INTO v_current_status FROM order_restaurant WHERE id_order = p_id_order;
+
+    IF v_current_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Order not found';
+    END IF;
+
+    IF p_new_status = 'INVOICED' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Use invoice generation to mark an order as INVOICED';
+    END IF;
+
+    IF v_current_status IN ('INVOICED', 'CANCELLED') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cannot change status of a finalized or cancelled order';
+    END IF;
+
+    IF NOT (
+        (v_current_status = 'PENDING' AND p_new_status IN ('IN_PREPARATION', 'CANCELLED')) OR
+        (v_current_status = 'IN_PREPARATION' AND p_new_status IN ('READY', 'CANCELLED')) OR
+        (v_current_status = 'READY' AND p_new_status IN ('DELIVERED', 'CANCELLED')) OR
+        (v_current_status = 'DELIVERED' AND p_new_status = 'CANCELLED')
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid order status transition';
+    END IF;
+
+    UPDATE order_restaurant SET status = p_new_status WHERE id_order = p_id_order;
 END//
 
 -- SP: Generate invoice for an order
@@ -407,26 +489,32 @@ BEGIN
     DECLARE v_taxes DECIMAL(10,2);
     DECLARE v_order_status VARCHAR(20);
     DECLARE v_invoice_exists INT;
-    
+
     SELECT status, total INTO v_order_status, v_total FROM order_restaurant WHERE id_order = p_id_order;
     SELECT COUNT(*) INTO v_invoice_exists FROM invoice WHERE id_order = p_id_order;
-    
+
+    IF v_order_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Order not found';
+    END IF;
+
     IF v_invoice_exists > 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Order already has an invoice generated';
     END IF;
-    
-    IF v_order_status NOT IN ('DELIVERED', 'IN_PREPARATION', 'READY') THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Order is not ready for invoicing';
+
+    IF v_order_status NOT IN ('READY', 'DELIVERED') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Order must be READY or DELIVERED for invoicing';
     END IF;
-    
-    SET v_taxes = v_total * 0.19; -- VAT 19%
-    
+
+    IF v_total IS NULL OR v_total <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cannot invoice an order with zero total';
+    END IF;
+
+    SET v_taxes = ROUND(v_total * 0.19, 2); -- VAT 19%
+
     INSERT INTO invoice (id_order, subtotal, taxes, total, payment_method, invoice_number, payment_status)
-    VALUES (p_id_order, v_total, v_taxes, v_total + v_taxes, p_payment_method, p_invoice_number, 
+    VALUES (p_id_order, v_total, v_taxes, v_total + v_taxes, p_payment_method, p_invoice_number,
             CASE WHEN p_payment_method = 'CASH' THEN 'PAID' ELSE 'PENDING' END);
-    
-    UPDATE order_restaurant SET status = 'INVOICED' WHERE id_order = p_id_order;
-    
+
     SELECT LAST_INSERT_ID() AS id_invoice;
 END//
 
@@ -440,13 +528,32 @@ CREATE PROCEDURE sp_register_payment(
 BEGIN
     DECLARE v_current_status VARCHAR(20);
     DECLARE v_invoice_total DECIMAL(10,2);
-    
+    DECLARE v_total_paid DECIMAL(10,2);
+
     SELECT payment_status, total INTO v_current_status, v_invoice_total FROM invoice WHERE id_invoice = p_id_invoice;
-    
+
+    IF v_current_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invoice not found';
+    END IF;
+
     IF v_current_status = 'PAID' THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invoice is already paid';
     END IF;
-    
+
+    IF v_current_status = 'VOIDED' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cannot register payment for a voided invoice';
+    END IF;
+
+    IF p_amount IS NULL OR p_amount <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Payment amount must be greater than zero';
+    END IF;
+
+    SELECT COALESCE(SUM(amount), 0) INTO v_total_paid FROM invoice_payment WHERE id_invoice = p_id_invoice;
+
+    IF v_total_paid + p_amount > v_invoice_total THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Payment amount exceeds remaining invoice balance';
+    END IF;
+
     INSERT INTO invoice_payment (id_invoice, amount, payment_method, reference)
     VALUES (p_id_invoice, p_amount, p_payment_method, p_reference);
 END//
@@ -458,19 +565,26 @@ CREATE PROCEDURE sp_change_table_status(
 )
 BEGIN
     DECLARE v_current_status VARCHAR(20);
-    
+
     SELECT status INTO v_current_status FROM table_restaurant WHERE id_table = p_id_table;
-    
-    IF v_current_status = 'OCCUPIED' AND p_new_status = 'FREE' THEN
-        -- Verify no active orders
+
+    IF v_current_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table not found';
+    END IF;
+
+    IF v_current_status = 'OCCUPIED' AND p_new_status != 'OCCUPIED' THEN
+        -- Verify no active orders or unpaid invoices
         IF EXISTS (
-            SELECT 1 FROM order_restaurant 
-            WHERE id_table = p_id_table AND status NOT IN ('INVOICED', 'CANCELLED')
+            SELECT 1 FROM order_restaurant o
+            LEFT JOIN invoice i ON i.id_order = o.id_order
+            WHERE o.id_table = p_id_table
+              AND (o.status NOT IN ('INVOICED', 'CANCELLED')
+                   OR i.payment_status IN ('PENDING', 'PARTIAL'))
         ) THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table has active orders';
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table has active orders or unpaid invoices';
         END IF;
     END IF;
-    
+
     UPDATE table_restaurant SET status = p_new_status WHERE id_table = p_id_table;
 END//
 
@@ -530,16 +644,16 @@ INSERT INTO dish (id_category, name, description, price, prep_time_minutes) VALU
 (6, 'Red Wine Glass', 'Reserve red wine (150ml)', 15000.00, 2),
 (6, 'Mojito', 'Rum, mint, lime, sugar, soda', 18000.00, 5);
 
--- Restaurant tables
+-- Restaurant tables (Tables 3, 4, 5, 6, 8 are OCCUPIED matching active orders / partial invoice below)
 INSERT INTO table_restaurant (number, capacity, status, location) VALUES
 (1, 2, 'FREE', 'Terrace'),
 (2, 2, 'FREE', 'Terrace'),
-(3, 4, 'FREE', 'Main Hall'),
-(4, 4, 'FREE', 'Main Hall'),
-(5, 4, 'FREE', 'Main Hall'),
-(6, 6, 'FREE', 'Main Hall'),
+(3, 4, 'OCCUPIED', 'Main Hall'),
+(4, 4, 'OCCUPIED', 'Main Hall'),
+(5, 4, 'OCCUPIED', 'Main Hall'),
+(6, 6, 'OCCUPIED', 'Main Hall'),
 (7, 6, 'FREE', 'Main Hall'),
-(8, 8, 'FREE', 'VIP Room'),
+(8, 8, 'OCCUPIED', 'VIP Room'),
 (9, 8, 'FREE', 'VIP Room'),
 (10, 10, 'FREE', 'VIP Room'),
 (11, 4, 'MAINTENANCE', 'Main Hall'),
@@ -556,71 +670,65 @@ INSERT INTO customer (name, phone, email, address) VALUES
 ('Diego Ramirez', '3163334455', 'diego.ramirez@email.com', 'Boyaca Ave # 65-40, Bogota'),
 ('Sofia Herrera', '3146667788', 'sofia.herrera@email.com', '127th St # 15-30, Bogota');
 
--- Test orders (various states)
--- Order 1: Table 3, Customer 1 - DELIVERED (ready for invoicing)
+-- Test orders (totals are automatically calculated by trg_order_detail_after_insert)
 INSERT INTO order_restaurant (id_table, id_customer, order_datetime, status, notes, total) VALUES
-(3, 1, '2026-10-19 12:30:00', 'DELIVERED', 'No onion in salad', 47000.00),
+(3, 1, '2026-10-19 12:30:00', 'DELIVERED', 'No onion in salad', 0.00),
 (4, 2, '2026-10-19 13:15:00', 'IN_PREPARATION', 'Well done chicken', 0.00),
 (5, NULL, '2026-10-19 13:45:00', 'PENDING', 'Take away', 0.00),
 (6, 3, '2026-10-19 14:00:00', 'READY', 'No spicy', 0.00),
 (8, 4, '2026-10-19 19:30:00', 'PENDING', 'Birthday celebration', 0.00),
-(3, 5, '2026-10-18 20:00:00', 'INVOICED', '', 89000.00),
+(3, 5, '2026-10-18 20:00:00', 'INVOICED', '', 0.00),
 (4, 6, '2026-10-18 21:30:00', 'CANCELLED', 'Customer left', 0.00);
 
--- Order details
--- Order 1 (id=1): Appetizer + Main + Drink
+-- Order details (dish IDs verified against dish inserts 1..27)
+-- Order 1 (id=1): Caesar Salad (2) + Bandeja Paisa (5) + Natural Juice (15) = 56000.00
 INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
 (1, 2, 1, 15000.00),  -- Caesar Salad
 (1, 5, 1, 35000.00),  -- Bandeja Paisa
-(1, 17, 1, 6000.00);  -- Natural Juice
+(1, 15, 1, 6000.00);  -- Natural Juice
 
--- Order 2 (id=2): Main + Dessert
+-- Order 2 (id=2): Grilled Chicken Breast (6) + Tiramisu (11) = 34000.00
 INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
 (2, 6, 1, 22000.00),  -- Grilled Chicken Breast
-(2, 12, 1, 12000.00); -- Tiramisu
+(2, 11, 1, 12000.00); -- Tiramisu
 
--- Order 3 (id=3): 2 Burgers + 2 Milkshakes
+-- Order 3 (id=3): 2 Artisan Burgers (10) + 2 Milkshakes (19) = 66000.00
 INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
 (3, 10, 2, 24000.00), -- Artisan Burger
-(3, 21, 2, 9000.00);  -- Milkshake
+(3, 19, 2, 9000.00);  -- Milkshake
 
--- Order 4 (id=4): Salmon + Wine Glass
+-- Order 4 (id=4): Baked Salmon (7) + Red Wine Glass (26) = 53000.00
 INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
 (4, 7, 1, 38000.00),  -- Baked Salmon
-(4, 27, 1, 15000.00); -- Red Wine Glass
+(4, 26, 1, 15000.00); -- Red Wine Glass
 
--- Order 5 (id=5): Group - 2 Bandejas + 2 Juices + 2 Flans
+-- Order 5 (id=5): 2 Bandejas (5) + 2 Natural Juices (15) + 2 Caramel Flans (12) = 98000.00
 INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
 (5, 5, 2, 35000.00),  -- Bandeja Paisa x2
-(5, 17, 2, 6000.00),  -- Natural Juice x2
-(5, 13, 2, 8000.00);  -- Caramel Flan x2
+(5, 15, 2, 6000.00),  -- Natural Juice x2
+(5, 12, 2, 8000.00);  -- Caramel Flan x2
 
--- Order 6 (id=6): Already invoiced - Lasagna + Coffee + Tiramisu
+-- Order 6 (id=6): Already invoiced - Lasagna (8) + Coffee with Milk (21) + Tiramisu (11) = 41500.00
 INSERT INTO order_detail (id_order, id_dish, quantity, unit_price) VALUES
-(6, 8, 1, 25000.00),  -- Lasagna
-(6, 22, 1, 4500.00),  -- Coffee with Milk
-(6, 12, 1, 12000.00); -- Tiramisu
+(6, 8, 1, 25000.00),  -- Meat Lasagna
+(6, 21, 1, 4500.00),  -- Coffee with Milk
+(6, 11, 1, 12000.00); -- Tiramisu
 
 -- Order 7 (id=7): Cancelled - no details
 
 -- Invoices
--- Invoice for order 6 (already paid in cash)
+-- Invoice 1 for order 6 (subtotal 41500 + 19% VAT 7885 = 49385, already paid in cash)
 INSERT INTO invoice (id_order, issue_date, subtotal, taxes, total, payment_method, payment_status, invoice_number) VALUES
 (6, '2026-10-18 21:00:00', 41500.00, 7885.00, 49385.00, 'CASH', 'PAID', 'INV-20261018-001');
 
--- Invoice for order 1 (pending payment)
+-- Invoice 2 for order 1 (subtotal 56000 + 19% VAT 10640 = 66640, pending -> becomes PARTIAL after payment below)
 INSERT INTO invoice (id_order, issue_date, subtotal, taxes, total, payment_method, payment_status, invoice_number) VALUES
-(1, '2026-10-19 13:45:00', 47000.00, 8930.00, 55930.00, 'DEBIT_CARD', 'PENDING', 'INV-20261019-001');
+(1, '2026-10-19 13:45:00', 56000.00, 10640.00, 66640.00, 'MIXED', 'PENDING', 'INV-20261019-001');
 
--- Invoice payments (for invoice 2 - partial payment with card)
+-- Invoice payments (Invoice 1 paid in full; Invoice 2 partial payment leaving 36640.00 pending in v_pending_invoices)
 INSERT INTO invoice_payment (id_invoice, amount, payment_method, reference) VALUES
-(2, 30000.00, 'DEBIT_CARD', 'AUTH-123456'),
-(2, 25930.00, 'CASH', 'Remaining cash payment');
-
--- Update order totals (triggers would do this automatically, but forced for seed)
-UPDATE order_restaurant SET total = (
-    SELECT COALESCE(SUM(subtotal), 0) FROM order_detail WHERE id_order = order_restaurant.id_order
-) WHERE id_order IN (1,2,3,4,5,6);
+(1, 49385.00, 'CASH', 'CASH-20261018-001'),
+(2, 30000.00, 'DEBIT_CARD', 'AUTH-123456');
 
 -- =====================================================================
 -- VERIFICATION QUERIES

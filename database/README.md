@@ -45,16 +45,17 @@ Get-Content database\restaurante_db.sql | mysql -u root -p
   - Order status → invoice change
   - Invoice payment status update
   - Automatic table release
-- ✅ 5 Stored Procedures encapsulating operations:
+- ✅ 6 Stored Procedures encapsulating operations:
   - `sp_create_order()` - Validates free table
   - `sp_add_dish_to_order()` - Validates state and availability
+  - `sp_update_order_status()` - Enforces valid order lifecycle transitions
   - `sp_generate_invoice()` - Calculates 19% VAT
-  - `sp_register_payment()` - Supports partial/mixed payments
-  - `sp_change_table_status()` - Validates business rules
+  - `sp_register_payment()` - Supports partial/mixed payments with balance and VOIDED guards
+  - `sp_change_table_status()` - Validates active orders and unpaid invoices
 
 ### Test Data (DML)
 - ✅ 6 menu categories
-- ✅ 28 dishes with real prices and times
+- ✅ 27 dishes with real prices and times
 - ✅ 12 tables (different capacities/locations)
 - ✅ 8 customers
 - ✅ 7 orders in various states (PENDING, IN_PREPARATION, READY, DELIVERED, INVOICED, CANCELLED)
