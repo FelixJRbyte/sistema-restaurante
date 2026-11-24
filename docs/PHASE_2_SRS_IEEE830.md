@@ -75,6 +75,22 @@ The system provides a complete layered Java application backed by a 3NF MySQL re
 
 ---
 
+### 3.5 Global Acceptance Criteria
+
+| ID | Linked Req. / Rule | Acceptance Criterion | Verification Method |
+| :--- | :--- | :--- | :--- |
+| **CA-001** | `RF-001`, `RF-002`, `RN-004` | Creating a duplicate table number or capacity outside `1..20` is rejected; changing an `OCCUPIED` table with active orders to `FREE`, `RESERVED`, or `MAINTENANCE` is blocked by `sp_change_table_status`. | SQL SP execution + Console test |
+| **CA-002** | `RF-003` | Dishes require `price > 0` and `prep_time_minutes` between `1` and `180`; deactivating a dish performs a soft delete (`available = FALSE`) preserving historical `order_detail.unit_price`. | SQL constraint + DAO test |
+| **CA-003** | `RF-004`, `RN-001` | Creating an order succeeds only on a `FREE` table and atomically transitions the table to `OCCUPIED` and the order to `PENDING`. | `sp_create_order` execution |
+| **CA-004** | `RF-005`, `RN-002` | Adding unavailable dishes or adding/removing items on finalized (`DELIVERED`/`INVOICED`/`CANCELLED`) orders is rejected; removing an item requires valid Administrator PIN verification. | `sp_add_dish_to_order` + `Main.anularItemDePedido` |
+| **CA-005** | `RF-006` | Order status transitions strictly follow the defined lifecycle (`PENDING` → `IN_PREPARATION` → `READY` → `DELIVERED` → `INVOICED`, or `CANCELLED` from active states); invalid jumps are rejected. | `sp_update_order_status` |
+| **CA-006** | `RF-007`, `RN-003` | Invoicing an order calculates `taxes = subtotal * 0.19` and `total = subtotal + taxes`, blocks duplicate invoicing for the same order, and marks the order `INVOICED`. | `sp_generate_invoice` |
+| **CA-007** | `RF-008`, `RN-001` | Payments are rejected on `PAID` or `VOIDED` invoices and when `paid_so_far + amount > invoice.total`; reaching full payment marks the invoice `PAID` and frees the table if no other active orders remain. | `sp_register_payment` + trigger |
+| **CA-008** | `RF-009`, `RF-010` | Daily sales consolidate paid invoices by payment method (`v_daily_sales`) and Top 10 ranks non-cancelled dishes by units sold and revenue (`v_top_dishes`). | SQL view queries |
+| **CA-009** | `RNF-003`, `RNF-005` | All JUnit 5 domain tests pass in GitHub Actions CI (`mvn clean test`) on JDK 25 + MySQL 8.0 with zero failures. | GitHub Actions CI |
+
+---
+
 ## 4. Traceability Matrix (100% Aligned Phase 1 ↔ Phase 2 ↔ Phase 3/4)
 
 | Phase 1 User Story | Phase 2 Functional Requirement | Priority | Phase 3 Java Classes | Phase 4 DB Objects |

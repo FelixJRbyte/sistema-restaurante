@@ -6,6 +6,36 @@
 
 ---
 
+## 0. Problem Statement, Objectives & Actors
+
+### 0.1 Problem Statement
+Small and medium-sized restaurants frequently manage table assignments, order taking, kitchen coordination, and billing through manual paper tickets or disconnected spreadsheets. This leads to:
+- **Table control errors**: assigning already occupied tables or failing to release tables promptly after payment.
+- **Kitchen bottlenecks**: lost or unordered preparation tickets and lack of real-time visibility into pending dishes.
+- **Billing and tax discrepancies**: manual calculation mistakes on subtotals, 19% VAT, partial/mixed payments, and unauthorized item cancellations.
+- **Lack of managerial insight**: inability to audit daily revenue by payment method or identify best-selling menu items.
+
+### 0.2 General Objective
+Design and implement an integrated Restaurant Management System using Java 25 and MySQL 8.0 that automates table lifecycle control, menu catalog administration, order-to-kitchen workflow, 19% VAT invoicing with partial/mixed payments, and managerial sales reporting.
+
+### 0.3 Specific Objectives
+1. Guarantee real-time table availability control and automatic table release upon full payment or order cancellation (`RN-001`, `RN-004`).
+2. Provide full menu and category management with soft deletion so historical orders preserve their original pricing.
+3. Coordinate order creation, item additions, PIN-protected item cancellations (`RN-002`), and kitchen preparation tracking.
+4. Automate invoice generation with mandatory 19% VAT calculation (`RN-003`) and support full, partial, and mixed payments.
+5. Deliver analytical reports for daily sales by payment method and the Top 10 best-selling dishes.
+
+### 0.4 Identified Actors / Users
+
+| Actor | Role Description | Primary Epics |
+| :--- | :--- | :--- |
+| **Administrator** | Manages tables, menu catalog, categories, authorizes restricted item cancellations (Admin PIN), and reviews managerial reports. | Epics 1, 2, 3 (PIN), 5 |
+| **Waiter** | Checks available tables, opens orders, adds dishes with notes, delivers ready orders, and requests cancellations. | Epics 1, 2 (Query), 3 |
+| **Cook / Kitchen Staff** | Monitors incoming kitchen orders (`v_kitchen_orders`) and updates preparation states (`IN_PREPARATION` → `READY`). | Epic 3 |
+| **Cashier** | Generates invoices with 19% VAT, registers single/partial/mixed payments, and manages customer records. | Epic 4 |
+
+---
+
 ## 1. Epic 1: Table Management
 
 ### HU-01 — Register Table

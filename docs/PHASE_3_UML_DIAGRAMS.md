@@ -232,7 +232,47 @@ sequenceDiagram
 
 ---
 
-## 5. State Machine Diagram: Table and Order Lifecycle
+## 5. Activity Diagram: Order, Kitchen, Invoicing & Payment Workflow
+
+```mermaid
+flowchart TD
+    Start((Start)) --> QueryTables["Waiter: Query Available Tables (v_available_tables)"]
+    QueryTables --> TableFree{"Table is FREE?"}
+    TableFree -- No --> ShowNoTable["Display error: Table unavailable"] --> EndFail((End))
+    TableFree -- Yes --> CreateOrder["Waiter: Create Order (sp_create_order)<br/>Order = PENDING, Table = OCCUPIED"]
+
+    CreateOrder --> AddDish["Waiter: Select Dish & Quantity<br/>(sp_add_dish_to_order)"]
+    AddDish --> DishAvail{"Dish available?"}
+    DishAvail -- No --> DishErr["Display error: Dish unavailable"] --> MoreItems
+    DishAvail -- Yes --> RecalcTotal["Trigger recalculates order.total<br/>Order = IN_PREPARATION"]
+
+    RecalcTotal --> CancelItem{"Remove an item?"}
+    CancelItem -- Yes --> CheckPin{"Valid Admin PIN?<br/>(RN-002)"}
+    CheckPin -- No --> PinDenied["Access denied: Item kept"] --> MoreItems
+    CheckPin -- Yes --> RemoveItem["Delete item & trigger recalculates total"] --> MoreItems
+    CancelItem -- No --> MoreItems{"Add more dishes?"}
+    MoreItems -- Yes --> AddDish
+    MoreItems -- No --> KitchenView["Kitchen: View v_kitchen_orders & prepare"]
+
+    KitchenView --> CancelOrder{"Order cancelled?"}
+    CancelOrder -- Yes --> SetCancelled["Update Order = CANCELLED<br/>Trigger releases Table = FREE"] --> EndCancel((End))
+    CancelOrder -- No --> SetReady["Kitchen: Update Order = READY"]
+    SetReady --> SetDelivered["Waiter: Serve & Update Order = DELIVERED"]
+
+    SetDelivered --> GenInvoice["Cashier: Generate Invoice (sp_generate_invoice)<br/>Subtotal + 19% VAT (RN-003), Order = INVOICED"]
+    GenInvoice --> IsCash{"Paid in CASH?"}
+    IsCash -- Yes --> AutoPaid["Invoice = PAID<br/>Trigger releases Table = FREE"] --> EndOk((End))
+    IsCash -- No --> RegPay["Cashier: Register Payment (sp_register_payment)"]
+    RegPay --> ValidPay{"Invoice not PAID/VOIDED<br/>& amount <= balance?"}
+    ValidPay -- No --> PayErr["Reject payment & display error"] --> RegPay
+    ValidPay -- Yes --> CheckFull{"Total paid >= invoice.total?"}
+    CheckFull -- No --> Partial["Trigger sets Invoice = PARTIAL"] --> RegPay
+    CheckFull -- Yes --> PaidFull["Trigger sets Invoice = PAID<br/>& releases Table = FREE (RN-001)"] --> EndOk
+```
+
+---
+
+## 6. State Machine Diagram: Table and Order Lifecycle
 
 ```mermaid
 stateDiagram-v2
