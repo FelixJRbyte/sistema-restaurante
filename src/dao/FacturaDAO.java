@@ -268,16 +268,43 @@ public class FacturaDAO {
     }
 
     public boolean anularFactura(int idFactura) {
-        String sql = "UPDATE invoice SET payment_status = 'VOIDED' WHERE id_invoice = ?";
+        String updateInvoiceSql = """
+            UPDATE invoice
+            SET payment_status = 'VOIDED'
+            WHERE id_invoice = ? AND payment_status IN ('PENDING', 'PARTIAL')
+            """;
+        String releaseTableSql = """
+            UPDATE table_restaurant t
+            JOIN `order_restaurant` o ON o.id_table = t.id_table
+            JOIN invoice f ON f.id_order = o.id_order
+            SET t.status = 'FREE'
+            WHERE f.id_invoice = ?
+              AND NOT EXISTS (
+                  SELECT 1 FROM `order_restaurant` o2
+                  WHERE o2.id_table = t.id_table
+                    AND o2.status IN ('PENDING', 'IN_PREPARATION', 'READY', 'DELIVERED')
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM invoice f2
+                  JOIN `order_restaurant` o3 ON f2.id_order = o3.id_order
+                  WHERE o3.id_table = t.id_table
+                    AND f2.payment_status IN ('PENDING', 'PARTIAL')
+              )
+            """;
         try (Connection conn = ConexionDB.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(updateInvoiceSql)) {
 
             stmt.setInt(1, idFactura);
             int filas = stmt.executeUpdate();
             if (filas > 0) {
+                try (PreparedStatement releaseStmt = conn.prepareStatement(releaseTableSql)) {
+                    releaseStmt.setInt(1, idFactura);
+                    releaseStmt.executeUpdate();
+                }
                 ConexionDB.commit();
                 return true;
             }
+            ConexionDB.rollback();
         } catch (SQLException e) {
             ConexionDB.rollback();
             System.err.println("Error voiding invoice: " + e.getMessage());

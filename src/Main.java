@@ -1,3 +1,4 @@
+import dao.ConexionDB;
 import servicios.GestionClientes;
 import servicios.GestionFacturas;
 import servicios.GestionMesas;
@@ -10,7 +11,9 @@ import modelo.Mesa;
 import modelo.Pedido;
 import modelo.Plato;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -18,7 +21,7 @@ import java.util.Scanner;
 
 public class Main {
 
-    private static final String ADMIN_PIN = "1234";
+    private static final String ADMIN_PIN = ConexionDB.getAdminPin();
     private static final Scanner teclado = new Scanner(System.in);
     private static final GestionMesas gestionMesas = new GestionMesas();
     private static final GestionMenu gestionMenu = new GestionMenu();
@@ -283,7 +286,7 @@ public class Main {
         System.out.print("Descripción: ");
         String desc = teclado.nextLine();
         System.out.print("Precio: ");
-        double precio = teclado.nextDouble();
+        double precio = leerDouble();
         System.out.print("Tiempo preparación (min): ");
         int tiempo = leerEntero();
 
@@ -298,8 +301,8 @@ public class Main {
     private static void cambiarDisponibilidadPlato() {
         System.out.print("ID del plato: ");
         int idPlato = leerEntero();
-        System.out.print("¿Disponible? (true/false): ");
-        boolean disp = teclado.nextBoolean();
+        System.out.print("¿Disponible? (s/n): ");
+        boolean disp = leerBoolean();
 
         if (gestionMenu.cambiarDisponibilidadPlato(idPlato, disp)) {
             System.out.println("Disponibilidad actualizada.");
@@ -321,25 +324,46 @@ public class Main {
         Plato p = platoOpt.get();
         System.out.print("Nuevo nombre (" + p.getNombre() + "): ");
         teclado.nextLine();
-        String nombre = teclado.nextLine();
+        String nombre = teclado.nextLine().trim();
         if (!nombre.isEmpty()) p.setNombre(nombre);
 
         System.out.print("Nueva descripción (" + p.getDescripcion() + "): ");
-        String desc = teclado.nextLine();
+        String desc = teclado.nextLine().trim();
         if (!desc.isEmpty()) p.setDescripcion(desc);
 
         System.out.print("Nuevo precio (" + p.getPrecio() + "): ");
-        String precioStr = teclado.nextLine();
-        if (!precioStr.isEmpty()) p.setPrecio(Double.parseDouble(precioStr));
+        String precioStr = teclado.nextLine().trim();
+        if (!precioStr.isEmpty()) {
+            try {
+                p.setPrecio(Double.parseDouble(precioStr));
+            } catch (NumberFormatException e) {
+                System.out.println("Precio inválido. Operación cancelada.");
+                return;
+            }
+        }
 
         System.out.print("Nuevo tiempo preparación (" + p.getTiempoPreparacion() + "): ");
-        String tiempoStr = teclado.nextLine();
-        if (!tiempoStr.isEmpty()) p.setTiempoPreparacion(Integer.parseInt(tiempoStr));
+        String tiempoStr = teclado.nextLine().trim();
+        if (!tiempoStr.isEmpty()) {
+            try {
+                p.setTiempoPreparacion(Integer.parseInt(tiempoStr));
+            } catch (NumberFormatException e) {
+                System.out.println("Tiempo de preparación inválido. Operación cancelada.");
+                return;
+            }
+        }
 
         listarCategorias();
         System.out.print("Nueva categoría (" + p.getIdCategoria() + "): ");
-        String catStr = teclado.nextLine();
-        if (!catStr.isEmpty()) p.setIdCategoria(Integer.parseInt(catStr));
+        String catStr = teclado.nextLine().trim();
+        if (!catStr.isEmpty()) {
+            try {
+                p.setIdCategoria(Integer.parseInt(catStr));
+            } catch (NumberFormatException e) {
+                System.out.println("ID de categoría inválido. Operación cancelada.");
+                return;
+            }
+        }
 
         if (gestionMenu.actualizarPlato(p)) {
             System.out.println("Plato actualizado.");
@@ -410,13 +434,12 @@ public class Main {
 
         System.out.print("ID de cliente (0 si no hay): ");
         int idCliente = leerEntero();
-        if (idCliente == 0) idCliente = -1;
 
         System.out.print("Observaciones: ");
         teclado.nextLine();
         String obs = teclado.nextLine();
 
-        Optional<Integer> idPedido = gestionPedidos.crearPedido(idMesa, idCliente > 0 ? idCliente : 0, obs);
+        Optional<Integer> idPedido = gestionPedidos.crearPedido(idMesa, Math.max(idCliente, 0), obs);
         if (idPedido.isPresent()) {
             System.out.println("Pedido creado con ID: " + idPedido.get());
         } else {
@@ -525,7 +548,8 @@ public class Main {
     private static void cambiarEstadoPedido() {
         System.out.print("ID del pedido: ");
         int idPedido = leerEntero();
-        System.out.println("Estados: PENDIENTE, EN_PREPARACION, LISTO, ENTREGADO, CANCELADO, FACTURADO");
+        System.out.println("Estados disponibles: PENDIENTE, EN_PREPARACION, LISTO, ENTREGADO, CANCELADO");
+        System.out.println("(El estado FACTURADO se asigna automáticamente al generar la factura)");
         System.out.print("Nuevo estado: ");
         String estadoStr = teclado.next().toUpperCase();
 
@@ -534,7 +558,7 @@ public class Main {
             if (gestionPedidos.actualizarEstadoPedido(idPedido, estado)) {
                 System.out.println("Estado actualizado.");
             } else {
-                System.out.println("Error al actualizar estado.");
+                System.out.println("Error al actualizar estado (transición no permitida o pedido inexistente).");
             }
         } catch (IllegalArgumentException e) {
             System.out.println("Estado inválido.");
@@ -633,12 +657,16 @@ public class Main {
             System.out.println("Esta factura ya está pagada completamente.");
             return;
         }
+        if (factura.getEstadoPago() == Factura.EstadoPago.ANULADO) {
+            System.out.println("No se pueden registrar pagos en una factura anulada.");
+            return;
+        }
 
         double pagado = getPagado(factura);
         System.out.printf("Total factura: $%.2f | Pagado: $%.2f | Pendiente: $%.2f%n",
                 factura.getTotal(), pagado, Math.max(0.0, factura.getTotal() - pagado));
         System.out.print("Monto a pagar: ");
-        double monto = teclado.nextDouble();
+        double monto = leerDouble();
 
         System.out.println("Método: EFECTIVO, TARJETA_CREDITO, TARJETA_DEBITO, TRANSFERENCIA, QR");
         System.out.print("Método de pago: ");
@@ -870,7 +898,17 @@ public class Main {
                     System.out.print("Fecha (YYYY-MM-DD) [hoy]: ");
                     teclado.nextLine();
                     String fechaStr = teclado.nextLine().trim();
-                    LocalDateTime fecha = fechaStr.isEmpty() ? LocalDateTime.now() : LocalDateTime.parse(fechaStr + "T00:00:00");
+                    LocalDateTime fecha;
+                    if (fechaStr.isEmpty()) {
+                        fecha = LocalDateTime.now();
+                    } else {
+                        try {
+                            fecha = LocalDate.parse(fechaStr).atStartOfDay();
+                        } catch (DateTimeParseException e) {
+                            System.out.println("Formato de fecha inválido. Use YYYY-MM-DD (ejemplo: 2026-04-06).");
+                            break;
+                        }
+                    }
                     List<Factura> ventas = gestionFacturas.listarVentasDiarias(fecha);
                     if (ventas.isEmpty()) {
                         System.out.println("No hay ventas para esa fecha.");
@@ -955,10 +993,29 @@ public class Main {
 
     private static int leerEntero() {
         while (!teclado.hasNextInt()) {
-            System.out.print("Entrada inválida. Ingrese un número: ");
+            System.out.print("Entrada inválida. Ingrese un número entero: ");
             teclado.next();
         }
         return teclado.nextInt();
+    }
+
+    private static double leerDouble() {
+        while (!teclado.hasNextDouble()) {
+            System.out.print("Entrada inválida. Ingrese un valor numérico: ");
+            teclado.next();
+        }
+        return teclado.nextDouble();
+    }
+
+    private static boolean leerBoolean() {
+        while (true) {
+            String entrada = teclado.next().trim().toLowerCase();
+            switch (entrada) {
+                case "s", "si", "sí", "true", "1" -> { return true; }
+                case "n", "no", "false", "0" -> { return false; }
+                default -> System.out.print("Entrada inválida. Ingrese 's' (sí) o 'n' (no): ");
+            }
+        }
     }
 
     private static void cerrarRecursos() {

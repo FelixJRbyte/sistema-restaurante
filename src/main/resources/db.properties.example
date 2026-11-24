@@ -8,3 +8,6 @@ db.driver=com.mysql.cj.jdbc.Driver
 # Connection pool settings
 db.pool.maxSize=10
 db.pool.minIdle=2
+
+# Administrator authorization PIN for sensitive operations (RN-002)
+admin.pin=1234

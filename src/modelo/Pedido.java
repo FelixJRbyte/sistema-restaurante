@@ -120,8 +120,10 @@ public class Pedido extends EntidadBase {
     }
 
     public void setDetalles(List<DetallePedido> detalles) {
-        this.detalles = detalles;
-        recalcularTotal();
+        this.detalles = (detalles != null) ? detalles : new ArrayList<>();
+        if (!this.detalles.isEmpty()) {
+            recalcularTotal();
+        }
     }
 
     public void agregarDetalle(DetallePedido detalle) {

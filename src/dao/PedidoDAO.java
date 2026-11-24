@@ -216,7 +216,12 @@ public class PedidoDAO {
     }
 
     public boolean eliminarPlatoDePedido(int idPedido, int idPlato) {
-        String sql = "DELETE FROM order_detail WHERE id_order = ? AND id_dish = ?";
+        String sql = """
+            DELETE od FROM order_detail od
+            JOIN `order_restaurant` o ON od.id_order = o.id_order
+            WHERE od.id_order = ? AND od.id_dish = ?
+              AND o.status IN ('PENDING', 'IN_PREPARATION')
+            """;
         try (Connection conn = ConexionDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -228,6 +233,7 @@ public class PedidoDAO {
                 ConexionDB.commit();
                 return true;
             }
+            ConexionDB.rollback();
         } catch (SQLException e) {
             ConexionDB.rollback();
             System.err.println("Error removing dish from order: " + e.getMessage());
@@ -236,21 +242,22 @@ public class PedidoDAO {
     }
 
     public boolean actualizarEstado(int idPedido, Pedido.Estado nuevoEstado) {
-        String sql = "UPDATE `order_restaurant` SET status = ? WHERE id_order = ?";
+        if (nuevoEstado == null) {
+            return false;
+        }
+        String sql = "{CALL sp_update_order_status(?, ?)}";
         try (Connection conn = ConexionDB.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             CallableStatement stmt = conn.prepareCall(sql)) {
 
-            stmt.setString(1, estadoToDb(nuevoEstado));
-            stmt.setInt(2, idPedido);
+            stmt.setInt(1, idPedido);
+            stmt.setString(2, estadoToDb(nuevoEstado));
 
-            int filas = stmt.executeUpdate();
-            if (filas > 0) {
-                ConexionDB.commit();
-                return true;
-            }
+            stmt.execute();
+            ConexionDB.commit();
+            return true;
         } catch (SQLException e) {
             ConexionDB.rollback();
-            System.err.println("Error updating order status: " + e.getMessage());
+            System.err.println("Error updating order status (SP): " + e.getMessage());
         }
         return false;
     }

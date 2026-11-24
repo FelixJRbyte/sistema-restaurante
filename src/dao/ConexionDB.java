@@ -15,6 +15,7 @@ public class ConexionDB {
     private static String USER;
     private static String PASSWORD;
     private static String DRIVER;
+    private static String ADMIN_PIN;
 
     // ThreadLocal physical connection for nested DAO operations and manual transaction control
     private static final ThreadLocal<Connection> threadConnection = new ThreadLocal<>();
@@ -32,6 +33,7 @@ public class ConexionDB {
                 USER = props.getProperty("db.user", "root");
                 PASSWORD = props.getProperty("db.password", "");
                 DRIVER = props.getProperty("db.driver", "com.mysql.cj.jdbc.Driver");
+                ADMIN_PIN = props.getProperty("admin.pin", "1234");
             } else {
                 setDefaults();
             }
@@ -46,6 +48,11 @@ public class ConexionDB {
         USER = "root";
         PASSWORD = "";
         DRIVER = "com.mysql.cj.jdbc.Driver";
+        ADMIN_PIN = "1234";
+    }
+
+    public static String getAdminPin() {
+        return ADMIN_PIN;
     }
 
     private ConexionDB() {
