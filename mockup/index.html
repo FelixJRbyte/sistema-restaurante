@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restaurant Management System — Phase 5 Interactive Prototype</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ==================== 0. ACCESS & AUTHENTICATION SCREEN ==================== -->
+  <section id="loginScreen" class="login-screen" aria-label="System Access">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-mark">SR</div>
+        <div>
+          <h1>Restaurant Management System</h1>
+          <p>Phase 5 Interactive Prototype &bull; SENA ADSO Group 04</p>
+        </div>
+      </div>
+
+      <form id="loginForm" novalidate>
+        <div class="form-field">
+          <label>Select Operational Role</label>
+          <div class="role-grid" id="roleGrid">
+            <button type="button" class="role-option selected" data-role="ADMIN">
+              <strong>Administrator</strong>
+              <span>Full access + PIN voiding</span>
+            </button>
+            <button type="button" class="role-option" data-role="WAITER">
+              <strong>Waiter</strong>
+              <span>Tables, menu &amp; orders</span>
+            </button>
+            <button type="button" class="role-option" data-role="CASHIER">
+              <strong>Cashier</strong>
+              <span>Invoicing, payments &amp; sales</span>
+            </button>
+            <button type="button" class="role-option" data-role="KITCHEN">
+              <strong>Kitchen Staff</strong>
+              <span>Kitchen display &amp; prep status</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="loginName">Operator Name</label>
+          <input id="loginName" class="input" type="text" value="Carlos Admin" required />
+        </div>
+
+        <div class="form-field" id="loginPinWrap">
+          <label for="loginPin">Administrator PIN (RN-002)</label>
+          <input id="loginPin" class="input" type="password" value="1234" placeholder="Enter 4-digit PIN (default: 1234)" />
+        </div>
+
+        <div id="loginError" class="form-error hidden"></div>
+
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <button type="submit" class="btn btn-primary" style="flex:1;">Enter System</button>
+          <button type="button" id="btnResetDemo" class="btn btn-secondary">Reset Sample Data</button>
+        </div>
+      </form>
+
+      <div class="login-hint">
+        <strong>Demo Credentials:</strong> Administrator PIN is <code>1234</code>. Non-admin roles require no PIN, and item cancellation (<code>RN-002</code>) will prompt for the Admin PIN on demand.
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MAIN APPLICATION SHELL ==================== -->
+  <div id="appShell" class="app-shell hidden">
+    <aside class="sidebar" aria-label="Main Navigation">
+      <div class="sidebar-brand">
+        <div class="brand-mark">SR</div>
+        <div>
+          <h2>Restaurante G04</h2>
+          <small>Phase 5 Prototype</small>
+        </div>
+      </div>
+
+      <div class="nav-section-label">Operations</div>
+      <ul class="nav-list" id="navList">
+        <li><button class="nav-btn active" data-view="dashboard"><span>Dashboard / Home</span></button></li>
+        <li><button class="nav-btn" data-view="tables"><span>Tables &amp; Floor Map</span><span class="nav-count" id="navCountTables">0</span></button></li>
+        <li><button class="nav-btn" data-view="menu"><span>Menu Catalog</span><span class="nav-count" id="navCountMenu">0</span></button></li>
+        <li><button class="nav-btn" data-view="orders"><span>Orders &amp; Kitchen KDS</span><span class="nav-count" id="navCountOrders">0</span></button></li>
+        <li><button class="nav-btn" data-view="invoices"><span>Billing &amp; Payments</span><span class="nav-count" id="navCountInvoices">0</span></button></li>
+        <li><button class="nav-btn" data-view="customers"><span>Customers</span><span class="nav-count" id="navCountCustomers">0</span></button></li>
+        <li><button class="nav-btn" data-view="reports"><span>Reports &amp; Queries</span></button></li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="user-pill">
+          <strong id="sidebarUserName">Carlos Admin</strong>
+          <span id="sidebarUserRole">Role: ADMIN</span>
+        </div>
+        <button id="btnLogout" class="btn btn-ghost btn-sm">Switch Role / Sign Out</button>
+      </div>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div>
+          <div class="breadcrumb" id="breadcrumb">Home / Dashboard</div>
+          <h1 id="pageTitle">Dashboard Overview</h1>
+        </div>
+        <div class="topbar-actions" id="topbarActions"></div>
+      </header>
+
+      <main class="content" id="viewContainer"></main>
+    </div>
+  </div>
+
+  <!-- ==================== REUSABLE MODAL CONTAINER ==================== -->
+  <div id="modalBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div id="modalBox" class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">Modal Title</h3>
+        <button id="modalCloseBtn" class="btn btn-secondary btn-sm" aria-label="Close">&times;</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalFooter" class="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- ==================== TOAST NOTIFICATION STACK ==================== -->
+  <div id="toastStack" class="toast-stack" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

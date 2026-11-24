@@ -20,21 +20,26 @@ Complete restaurant management system developed in **Java 25** with **MySQL 8.0*
 ```text
 .
 ├── docs/
-│   ├── PHASE_1_USER_STORIES.md     # Phase 1: 15 User Stories (HU-01 to HU-15), MoSCoW & Glossary
-│   ├── PHASE_2_SRS_IEEE830.md      # Phase 2: IEEE 830 SRS, Business Rules & Traceability Matrix
+│   ├── PHASE_1_USER_STORIES.md     # Phase 1: Problem, Objectives, Actors, 15 User Stories (HU-01..HU-15) & MoSCoW
+│   ├── PHASE_2_SRS_IEEE830.md      # Phase 2: IEEE 830 SRS, Business Rules, Acceptance Criteria & Traceability Matrix
 │   └── PHASE_3_UML_DIAGRAMS.md     # Phase 3: Aligned UML Diagrams (Use Case, Class, Sequence, Activity, State)
 ├── database/
-│   ├── restaurante_db.sql          # Phase 4: Complete SQL script (3NF DDL + Views + Triggers + SPs + Seed Data)
+│   ├── restaurante_db.sql          # Phase 4: Complete SQL script (3NF DDL + Views + Triggers + 6 SPs + Seed Data)
 │   ├── ERD.md                      # Phase 4: Entity-Relationship Diagram (Mermaid) & 3NF Justification
 │   ├── MODELO_LOGICO.md            # Phase 4: Formal Logical Model, Functional Dependencies & Data Dictionary
 │   └── README.md                   # Phase 4: Database Execution & Verification Guide
+├── mockup/
+│   ├── index.html                  # Phase 5: Interactive Navigable HTML/CSS/JS Prototype (100% offline)
+│   ├── styles.css                  # Phase 5: Responsive UI Stylesheet (Floor Map, KDS, Modals, Reports)
+│   ├── app.js                      # Phase 5: Client-side Simulation enforcing RN-001..RN-004
+│   └── README.md                   # Phase 5: Navigation Flow Diagram & Requirements Traceability
 ├── src/
 │   ├── main/resources/
-│   │   └── db.properties.example   # Database connection configuration template
-│   ├── modelo/                     # Phase 3: EntidadBase (Abstract) + 7 Domain Entities
-│   ├── dao/                        # Phase 3: 7 DAOs + ConexionDB (ThreadLocal non-closing proxy)
-│   ├── servicios/                  # Phase 3: 5 Business Logic Service Classes
-│   └── Main.java                   # Phase 3: Interactive Console Application
+│   │   └── db.properties.example   # Database & Admin PIN configuration template
+│   ├── modelo/                     # Phase 6: EntidadBase (Abstract) + 7 Domain Entities
+│   ├── dao/                        # Phase 6: 7 DAOs + ConexionDB (ThreadLocal non-closing proxy)
+│   ├── servicios/                  # Phase 6: 5 Business Logic Service Classes
+│   └── Main.java                   # Phase 6: Interactive Console Application
 ├── test/
 │   └── SistemaRestauranteTest.java # Automated JUnit 5 Tests (OOP, Polymorphism, Composition & Validation)
 ├── .github/workflows/
@@ -54,15 +59,16 @@ Complete restaurant management system developed in **Java 25** with **MySQL 8.0*
   - `v_pending_invoices`: Unpaid or partially paid invoices.
   - `v_daily_sales`: Daily revenue consolidated by payment method.
   - `v_top_dishes`: Ranking of best-selling dishes by quantity sold and revenue (`RF-010`).
-- **5 Stored Procedures**:
+- **6 Stored Procedures**:
 
 | Stored Procedure | Description |
 | :--- | :--- |
 | `sp_create_order` | Creates an order validating that the table is `FREE` and marks it `OCCUPIED` |
-| `sp_add_dish_to_order` | Adds or increments a dish validating order status and dish availability |
-| `sp_generate_invoice` | Generates an invoice calculating 19% VAT and updates order status to `INVOICED` |
-| `sp_register_payment` | Registers partial/full payments and triggers automatic table release when `PAID` |
-| `sp_change_table_status` | Changes table status validating active order constraints |
+| `sp_add_dish_to_order` | Adds or increments a dish validating order status, dish availability, and quantity > 0 |
+| `sp_update_order_status` | Enforces valid order lifecycle transitions (`PENDING` → `IN_PREPARATION` → `READY` → `DELIVERED` / `CANCELLED`) |
+| `sp_generate_invoice` | Generates an invoice calculating 19% VAT (`RN-003`) for `READY`/`DELIVERED` orders and sets `INVOICED` |
+| `sp_register_payment` | Registers partial/full payments rejecting `PAID`/`VOIDED` or overpayments and releases table when `PAID` (`RN-001`) |
+| `sp_change_table_status` | Changes table status validating active order and unpaid invoice constraints |
 
 ---
 
