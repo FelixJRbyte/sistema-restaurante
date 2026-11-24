@@ -1,12 +1,11 @@
 package servicios;
 
+import java.util.List;
+import java.util.Optional;
+
 import dao.ConexionDB;
 import dao.MesaDAO;
 import modelo.Mesa;
-
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Optional;
 
 public class GestionMesas {
 
